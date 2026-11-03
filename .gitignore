@@ -1,0 +1,9 @@
+node_modules/
+dist/
+
+# User data: never committed, never overwritten by code changes
+maps/
+cases/
+fonts/
+layouts.json
+theme.json
