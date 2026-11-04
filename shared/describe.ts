@@ -10,6 +10,14 @@ export function describeAction(action: Action, state: AppState): string {
   const draft = state.trailDraft ? " (draft)" : "";
   const stepNo = (stepId: string) => trail.findIndex((t) => t.id === stepId) + 1;
   const charName = (id: string) => state.characters.find((c) => c.id === id)?.name ?? id;
+  const noteText = (id: string) => state.notes.find((n) => n.id === id)?.text ?? "";
+  // Mention tokens read as names; long notes are cut short.
+  const clip = (text: string) => {
+    const plain = text
+      .replace(/@\[([^\]]+)\]/g, (_m, id: string) => `@${charName(id)}`)
+      .replace(/#\[([^/\]]+)\/([^\]]+)\]/g, (_m, m: string, z: string) => `#${zoneLabel(m, z)}`);
+    return plain.length > 40 ? `${plain.slice(0, 39)}…` : plain;
+  };
   const place = (s: Pick<TrailStep, "mapId" | "zoneId" | "customLabel">) =>
     s.mapId && s.zoneId ? zoneLabel(s.mapId, s.zoneId) : `“${s.customLabel}”`;
 
@@ -78,6 +86,28 @@ export function describeAction(action: Action, state: AppState): string {
       return "Retagged a library portrait";
     case "portrait/delete":
       return "Removed a library portrait";
+    case "note/add":
+      return `Added ${action.note.pinned ? "pinned " : ""}note “${clip(action.note.text)}”`;
+    case "note/update": {
+      const p = action.patch;
+      const what =
+        p.pinned === true ? "Pinned" : p.pinned === false ? "Unpinned" : p.hidden === true ? "Hid" : p.hidden === false ? "Showed" : "Edited";
+      return `${what} note “${clip(noteText(action.noteId))}”`;
+    }
+    case "note/delete":
+      return `Deleted note “${clip(noteText(action.noteId))}”`;
+    case "note/move":
+      return "Reordered notes";
+    case "overlay/setFocus":
+      return `Focus area → ${action.focus}`;
+    case "overlay/returnFocus":
+      return "Focus area → back";
+    case "overlay/configure": {
+      const p = action.patch;
+      if (p.hideAll !== undefined) return p.hideAll ? "Hid everything on the overlay" : "Showed the overlay again";
+      if (p.hideMap !== undefined) return p.hideMap ? "Hid the map" : "Showed the map";
+      return "Changed overlay settings";
+    }
     case "overlay/setMapView":
       return `Overlay map view: ${action.mode}`;
     case "overlay/setMap":

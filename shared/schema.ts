@@ -109,6 +109,14 @@ export const OverlayState = z.object({
   notesAutoScroll: z.boolean().default(true),
   /** Map shown in the focus area; null follows the trail's latest map. */
   mapId: nullableString,
+  /** Panic switch: the overlay draws nothing at all. */
+  hideAll: z.boolean().default(false),
+  /** Hide just the map (e.g. while reading a spoiler-sensitive paragraph). */
+  hideMap: z.boolean().default(false),
+  /** How the expanded notes view groups notes. */
+  notesGroup: z.enum(["tag", "step"]).default("tag"),
+  /** Faint rings on the map for places named in notes but not yet visited. */
+  noteRings: z.boolean().default(true),
 });
 
 export const CaseState = z.object({

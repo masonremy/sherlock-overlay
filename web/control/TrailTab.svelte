@@ -230,6 +230,10 @@
               </div>
             {/if}
             <div class="actions">
+              {#if app}
+                {@const count = app.notes.filter((n) => n.stepIds.includes(step.id)).length}
+                <button type="button" onclick={() => play.showNotes({ kind: "step", id: step.id })}>Notes ({count})</button>
+              {/if}
               {#if editMode}
                 <button type="button" onclick={() => (play.target = { kind: "insert", index: i })}>Insert before</button>
                 <button type="button" onclick={() => (play.target = { kind: "insert", index: i + 1 })}>Insert after</button>

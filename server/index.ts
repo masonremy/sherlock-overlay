@@ -37,8 +37,9 @@ function snapshot(): ServerMessage {
   return { type: "snapshot", rev: store.state.rev, state: store.state, history: store.timeline };
 }
 
-/** Latest mirrored panel view; kept so a reconnecting overlay picks it up. */
+/** Latest mirrored panel view and notes scroll; kept so a reconnecting overlay picks them up. */
 let mirror: MirrorView | null = null;
+let notesScroll = 0;
 
 function send(ws: WebSocket, msg: ServerMessage) {
   if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg));
@@ -52,6 +53,7 @@ store.subscribe(() => {
 wss.on("connection", (ws) => {
   send(ws, snapshot());
   if (mirror) send(ws, { type: "mirror", view: mirror });
+  send(ws, { type: "notesScroll", value: notesScroll });
   ws.on("message", (data) => {
     let parsed;
     try {
@@ -68,6 +70,9 @@ wss.on("connection", (ws) => {
     else if (msg.type === "mirror") {
       mirror = msg.view;
       for (const client of wss.clients) if (client !== ws) send(client, { type: "mirror", view: mirror });
+    } else if (msg.type === "notesScroll") {
+      notesScroll = msg.value;
+      for (const client of wss.clients) if (client !== ws) send(client, { type: "notesScroll", value: notesScroll });
     } else if (msg.type === "cue") {
       for (const client of wss.clients) if (client !== ws) send(client, { type: "cue", cue: msg.cue });
     } else {

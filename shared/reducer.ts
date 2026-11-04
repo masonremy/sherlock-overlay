@@ -170,6 +170,38 @@ export function reduce(state: AppState, action: Action): AppState {
       return { ...state, portraits };
     }
 
+    case "note/add": {
+      if (state.notes.some((n) => n.id === action.note.id)) throw new ActionError(`Note "${action.note.id}" already exists`);
+      checkNoteLinks(state, action.note);
+      const index = Math.min(action.index ?? 0, state.notes.length);
+      return { ...state, notes: state.notes.toSpliced(index, 0, action.note) };
+    }
+    case "note/update": {
+      const i = noteIndex(state, action.noteId);
+      checkNoteLinks(state, action.patch);
+      return { ...state, notes: state.notes.with(i, { ...state.notes[i], ...action.patch }) };
+    }
+    case "note/delete":
+      noteIndex(state, action.noteId);
+      return { ...state, notes: state.notes.filter((n) => n.id !== action.noteId) };
+    case "note/move": {
+      const i = noteIndex(state, action.noteId);
+      if (action.toIndex >= state.notes.length) throw new ActionError(`Can't move to position ${action.toIndex + 1}`);
+      return { ...state, notes: state.notes.toSpliced(i, 1).toSpliced(action.toIndex, 0, state.notes[i]) };
+    }
+
+    case "overlay/setFocus": {
+      const { focus } = state.overlay;
+      if (focus === action.focus) return state;
+      return { ...state, overlay: { ...state.overlay, focus: action.focus, focusPrev: focus } };
+    }
+    case "overlay/returnFocus": {
+      const { focus, focusPrev } = state.overlay;
+      return { ...state, overlay: { ...state.overlay, focus: focusPrev === focus ? "map" : focusPrev, focusPrev: "map" } };
+    }
+    case "overlay/configure":
+      return { ...state, overlay: { ...state.overlay, ...action.patch } };
+
     case "overlay/setMapView":
       return { ...state, overlay: { ...state.overlay, mapView: action.mode } };
     case "overlay/setMap":
@@ -203,6 +235,22 @@ function getPortrait(state: AppState, portraitId: string) {
 /** A place reference (character address, note place) must name an existing zone. */
 function checkPlace(state: AppState, place: { mapId: string; zoneId: string } | null): void {
   if (place) zoneIndex(getMap(state, place.mapId), place.zoneId);
+}
+
+function noteIndex(state: AppState, noteId: string): number {
+  const i = state.notes.findIndex((n) => n.id === noteId);
+  if (i < 0) throw new ActionError(`No note "${noteId}"`);
+  return i;
+}
+
+/** Every link on a note must point at something that exists. */
+function checkNoteLinks(
+  state: AppState,
+  links: { stepIds?: string[]; characterIds?: string[]; places?: { mapId: string; zoneId: string }[] },
+): void {
+  for (const id of links.stepIds ?? []) checkStepExists(state, id);
+  for (const id of links.characterIds ?? []) characterIndex(state, id);
+  for (const p of links.places ?? []) checkPlace(state, p);
 }
 
 function checkStepExists(state: AppState, stepId: string): void {

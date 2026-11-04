@@ -27,6 +27,8 @@ export const ClientMessage = z.discriminatedUnion("type", [
   // Transient: relayed to every client, never stored or undoable.
   z.object({ type: z.literal("mirror"), view: MirrorView }),
   z.object({ type: z.literal("cue"), cue: Cue }),
+  // Compact notes strip scroll position, 0 (top) to 1 (bottom).
+  z.object({ type: z.literal("notesScroll"), value: z.number().min(0).max(1) }),
 ]);
 
 export type ClientMessage = z.infer<typeof ClientMessage>;
@@ -35,4 +37,5 @@ export type ServerMessage =
   | { type: "snapshot"; rev: number; state: AppState; history: Timeline }
   | { type: "mirror"; view: MirrorView }
   | { type: "cue"; cue: Cue }
+  | { type: "notesScroll"; value: number }
   | { type: "error"; message: string };

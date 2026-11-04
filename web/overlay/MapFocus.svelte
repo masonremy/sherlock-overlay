@@ -16,9 +16,10 @@
     width: number;
     height: number;
     faces: Record<string, Character[]>;
+    rings: string[];
   }
 
-  let { map, trail, mode, mirror, width, height, faces }: Props = $props();
+  let { map, trail, mode, mirror, width, height, faces, rings }: Props = $props();
 
   const [W, H] = $derived(map.imageSize);
   const fit = $derived(fitView(W, H, width, height, 6));
@@ -69,7 +70,7 @@
   >
     <img src="/maps/{map.image}" width={W} height={H} alt="" />
   </div>
-  <TrailLayer {trail} {map} {faces} view={view.current} {width} {height} pinSize={15} idPrefix="ov" />
+  <TrailLayer {trail} {map} {faces} {rings} view={view.current} {width} {height} pinSize={15} idPrefix="ov" />
 </div>
 
 <style>

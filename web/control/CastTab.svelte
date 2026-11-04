@@ -1,11 +1,13 @@
-<script lang="ts">
+﻿<script lang="ts">
   import Avatar from "../lib/Avatar.svelte";
   import { newId, STATUS_COLORS, STATUS_LABELS } from "../lib/cast";
   import { centerCrop, cropToBlob, loadImage, uploadPortrait } from "../lib/portraitImage";
   import type { Connection } from "../lib/socket";
   import { stepPlace } from "../lib/trail";
+  import type { PlayState } from "./play.svelte";
 
-  let { conn, onAdd, onEdit }: { conn: Connection; onAdd: () => void; onEdit: (id: string) => void } = $props();
+  let { conn, play, onAdd, onEdit }: { conn: Connection; play: PlayState; onAdd: () => void; onEdit: (id: string) => void } =
+    $props();
   // svelte-ignore state_referenced_locally (the connection lives as long as the page)
   const { snapshot, dispatch, sendCue } = conn;
 
@@ -91,6 +93,11 @@
             onclick={() => dispatch({ type: "character/update", characterId: c.id, patch: { hidden: !c.hidden } })}
             >{c.hidden ? "◌" : "●"}</button
           >
+          {#if app.notes.some((n) => n.characterIds.includes(c.id))}
+            <button type="button" class="icon" title="Notes about {c.name}" onclick={() => play.showNotes({ kind: "character", id: c.id })}
+              >📝</button
+            >
+          {/if}
           <button type="button" class="icon" title="Replay intro on the overlay" onclick={() => sendCue({ kind: "intro", characterId: c.id })}
             >▶</button
           >

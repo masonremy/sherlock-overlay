@@ -1,0 +1,17 @@
+/* Theme tokens shared by the overlay and the panel. Icons and components read
+   these, so a palette or font change restyles everything (phase 6 makes them
+   editable). */
+:root {
+  --paper: #efe4cc;
+  --paper-light: #fbf6ea;
+  --paper-dark: #d9cfbc;
+  --ink: #2b2118;
+  --ink-soft: #6b5a44;
+  --sepia: #8a7354;
+  --sepia-light: #e3d3ad;
+  --wax: #9b1c1c;
+  --wax-dark: #5e0f0f;
+  --gold: #b08d2b;
+  --font-display: "IM Fell English", Georgia, serif;
+  --font-body: "Source Sans 3", system-ui, sans-serif;
+}

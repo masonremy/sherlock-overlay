@@ -21,9 +21,11 @@
     idPrefix: string;
     /** Characters met at each zone, shown as small faces above the pin. */
     faces?: Record<string, Character[]>;
+    /** Zones named in notes but not visited yet: drawn as faint dashed rings. */
+    rings?: string[];
   }
 
-  let { trail, map, view, width, height, pinSize = 14, idPrefix, faces = {} }: Props = $props();
+  let { trail, map, view, width, height, pinSize = 14, idPrefix, faces = {}, rings = [] }: Props = $props();
   const MAX_FACES = 3;
 
   const anchors = $derived(Object.fromEntries(map.zones.map((z) => [z.id, z.anchor])) as Record<string, Point>);
@@ -38,6 +40,11 @@
 </script>
 
 <svg class="trail" {width} {height} style:--pin="{pinSize}px">
+  {#each rings.filter((z) => anchors[z]) as zoneId (zoneId)}
+    {@const [x, y] = toScreen(anchors[zoneId])}
+    <circle class="ring" cx={x} cy={y} r={pinSize * 1.5} />
+  {/each}
+
   {#each segments as seg (seg.key)}
     {@const d = curvePath(toScreen(anchors[seg.from]), toScreen(anchors[seg.to]))}
     <g class="segment" class:recent={seg.toIndex === latest}>
@@ -137,6 +144,19 @@
     font-weight: 700;
     text-anchor: middle;
     dominant-baseline: central;
+  }
+  .ring {
+    fill: rgb(255 248 236 / 0.25);
+    stroke: var(--wax, #9b1c1c);
+    stroke-width: 2.5;
+    stroke-dasharray: 5 4;
+    opacity: 0.75;
+    animation: fadein 600ms ease-out both;
+  }
+  @keyframes fadein {
+    from {
+      opacity: 0;
+    }
   }
   .faces {
     filter: drop-shadow(0 2px 3px rgb(0 0 0 / 0.4));

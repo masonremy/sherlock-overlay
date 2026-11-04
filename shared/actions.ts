@@ -2,6 +2,7 @@ import { z } from "zod";
 import {
   Cameo,
   CharacterStatus,
+  FocusItem,
   ImageFile,
   ImageSize,
   Letter,
@@ -9,6 +10,8 @@ import {
   MapDef,
   MapId,
   MapView,
+  NoteTag,
+  OverlayState,
   PlaceRef,
   PortraitFile,
   PortraitId,
@@ -45,6 +48,31 @@ const NewCharacter = z.object({
 });
 
 const CharacterPatch = z.object(characterFields).partial().strict();
+
+// Notes: text may hold @[characterId] and #[mapId/zoneId] mention tokens; the
+// link arrays are the source of truth for what a note is linked to.
+const noteFields = {
+  text: z.string().trim().min(1, "A note needs some text").max(2000),
+  tag: NoteTag.nullable(),
+  pinned: z.boolean(),
+  hidden: z.boolean(),
+  stepIds: z.array(z.string()).max(50),
+  characterIds: z.array(z.string()).max(50),
+  places: z.array(PlaceRef).max(50),
+};
+
+const NewNote = z.object({
+  id: z.string().regex(/^[A-Za-z0-9_-]{1,40}$/, "Note id: letters, digits, - and _"),
+  text: noteFields.text,
+  tag: noteFields.tag.default(null),
+  pinned: noteFields.pinned.default(false),
+  hidden: noteFields.hidden.default(false),
+  stepIds: noteFields.stepIds.default([]),
+  characterIds: noteFields.characterIds.default([]),
+  places: noteFields.places.default([]),
+});
+
+const NotePatch = z.object(noteFields).partial().strict();
 
 const StepId = z.string().regex(/^[A-Za-z0-9_-]{1,40}$/, "Step id: letters, digits, - and _");
 const customLabel = z
@@ -141,7 +169,28 @@ export const Action = z.discriminatedUnion("type", [
   z.object({ type: z.literal("portrait/update"), portraitId: PortraitId, tags: LibraryPortrait.shape.tags }),
   z.object({ type: z.literal("portrait/delete"), portraitId: PortraitId }),
 
+  // Notes. New notes go on top, so the list reads newest first.
+  z.object({ type: z.literal("note/add"), note: NewNote, index: z.number().int().min(0).optional() }),
+  z.object({ type: z.literal("note/update"), noteId: z.string(), patch: NotePatch }),
+  z.object({ type: z.literal("note/delete"), noteId: z.string() }),
+  z.object({ type: z.literal("note/move"), noteId: z.string(), toIndex: z.number().int().min(0) }),
+
   // Overlay
+  z.object({ type: z.literal("overlay/setFocus"), focus: FocusItem }),
+  z.object({ type: z.literal("overlay/returnFocus") }),
+  z.object({
+    type: z.literal("overlay/configure"),
+    patch: z
+      .object({
+        hideAll: z.boolean(),
+        hideMap: z.boolean(),
+        notesGroup: OverlayState.shape.notesGroup.unwrap(),
+        noteRings: z.boolean(),
+        notesAutoScroll: z.boolean(),
+      })
+      .partial()
+      .strict(),
+  }),
   z.object({ type: z.literal("overlay/setMapView"), mode: MapView }),
   z.object({ type: z.literal("overlay/setMap"), mapId: MapId.nullable() }),
 ]);

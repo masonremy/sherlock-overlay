@@ -1,4 +1,6 @@
 ﻿<script lang="ts">
+  import { focusAction, toolkitItems, type FocusItem } from "../lib/focus";
+  import ToolIcon from "../lib/icons/ToolIcon.svelte";
   import { connect } from "../lib/socket";
   import { stepPlace } from "../lib/trail";
   import CastTab from "./CastTab.svelte";
@@ -6,8 +8,10 @@
   import HistoryDrawer from "./HistoryDrawer.svelte";
   import KeysTab from "./KeysTab.svelte";
   import MapPanel from "./MapPanel.svelte";
+  import NotesTab from "./NotesTab.svelte";
   import OverlayTab from "./OverlayTab.svelte";
-  import { PlayState } from "./play.svelte";
+  import { PlayState, TABS } from "./play.svelte";
+  import QuickNote from "./QuickNote.svelte";
   import TrailTab from "./TrailTab.svelte";
   import ZoneEditor from "./ZoneEditor.svelte";
 
@@ -17,11 +21,22 @@
 
   // Two modes: Play (record the investigation) and Zones (build map definitions).
   type Mode = "play" | "zones";
-  const TABS = ["trail", "cast", "keys", "case", "overlay"] as const;
-  type Tab = (typeof TABS)[number];
+  const TAB_LABELS = { trail: "Trail", notes: "Notes", cast: "Cast", keys: "Keys", case: "Case", overlay: "Overlay" };
   const initial = location.hash.slice(1);
   let mode = $state<Mode>(initial === "maps" || initial === "zones" ? "zones" : "play");
-  let tab = $state<Tab>(TABS.find((t) => t === initial) ?? "trail");
+  play.tab = TABS.find((t) => t === initial) ?? "trail";
+
+  // Focus area / toolkit
+  const overlay = $derived($snapshot?.state.overlay);
+  const tools = $derived(toolkitItems($snapshot?.state.newspaper.image ?? null));
+  function toggleFocus(item: FocusItem) {
+    if (!overlay || !tools.includes(item)) return;
+    const action = focusAction(overlay.focus, item);
+    if (action) dispatch(action);
+  }
+  function toggleHideAll() {
+    if (overlay) dispatch({ type: "overlay/configure", patch: { hideAll: !overlay.hideAll } });
+  }
 
   // Character form: null (closed), a new character, or an existing one.
   let charForm = $state<{ id: string | null } | null>(null);
@@ -33,7 +48,7 @@
   const selectedPlace = $derived(play.mapId && play.selected ? { mapId: play.mapId, zoneId: play.selected } : null);
   let showHistory = $state(false);
   $effect(() => {
-    history.replaceState(null, "", `#${mode === "zones" ? "zones" : tab}`);
+    history.replaceState(null, "", `#${mode === "zones" ? "zones" : play.tab}`);
   });
 
   // Title edits commit on Enter or blur; Esc restores the live value.
@@ -60,6 +75,30 @@
   }
 
   function onKey(e: KeyboardEvent) {
+    // Ctrl+1/2/3 put the map, newspaper or notes in the focus area (again to dismiss).
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && ["1", "2", "3"].includes(e.key) && mode === "play") {
+      e.preventDefault();
+      toggleFocus((["map", "newspaper", "notes"] as const)[Number(e.key) - 1]);
+      return;
+    }
+    // Single-letter keys only when no text field has focus.
+    const typing = (e.target as HTMLElement).matches?.("input, textarea, select, [contenteditable]");
+    if (!typing && !e.ctrlKey && !e.metaKey && !e.altKey && mode === "play" && !charForm) {
+      const k = e.key.toLowerCase();
+      if (k === "n") {
+        e.preventDefault();
+        play.quickNoteFocus++;
+        return;
+      }
+      if (k === "e") {
+        toggleFocus("notes");
+        return;
+      }
+      if (k === "h") {
+        toggleHideAll();
+        return;
+      }
+    }
     // Alt+letter toggles that letter key (by physical key, so layouts with Alt symbols still work).
     if (e.altKey && !e.ctrlKey && !e.metaKey && $snapshot && mode === "play") {
       const letter = /^Key([A-Z])$/.exec(e.code)?.[1] ?? /^Digit(\d)$/.exec(e.code)?.[1];
@@ -93,7 +132,15 @@
     <button type="button" class:on={mode === "zones"} onclick={() => (mode = "zones")}>Zones</button>
   </nav>
 
+  {#if overlay?.hideAll}
+    <div class="hidden-banner">
+      Overlay hidden: viewers see nothing.
+      <button type="button" onclick={toggleHideAll}>Show overlay (H)</button>
+    </div>
+  {/if}
+
   {#if mode === "play"}
+    <QuickNote {conn} {play} />
     <div class="play">
       <section class="mapcol">
         <MapPanel
@@ -106,20 +153,20 @@
       </section>
       <section class="tabcol">
         <nav class="tabs">
-          <button type="button" class:on={tab === "trail"} onclick={() => (tab = "trail")}>Trail</button>
-          <button type="button" class:on={tab === "cast"} onclick={() => (tab = "cast")}>Cast</button>
-          <button type="button" class:on={tab === "keys"} onclick={() => (tab = "keys")}>Keys</button>
-          <button type="button" class:on={tab === "case"} onclick={() => (tab = "case")}>Case</button>
-          <button type="button" class:on={tab === "overlay"} onclick={() => (tab = "overlay")}>Overlay</button>
+          {#each TABS as t (t)}
+            <button type="button" class:on={play.tab === t} onclick={() => (play.tab = t)}>{TAB_LABELS[t]}</button>
+          {/each}
         </nav>
         <div class="tabbody">
-          {#if tab === "trail"}
+          {#if play.tab === "trail"}
             <TrailTab {conn} {play} />
-          {:else if tab === "cast"}
-            <CastTab {conn} onAdd={() => (charForm = { id: null })} onEdit={(id) => (charForm = { id })} />
-          {:else if tab === "keys"}
+          {:else if play.tab === "notes"}
+            <NotesTab {conn} {play} />
+          {:else if play.tab === "cast"}
+            <CastTab {conn} {play} onAdd={() => (charForm = { id: null })} onEdit={(id) => (charForm = { id })} />
+          {:else if play.tab === "keys"}
             <KeysTab {conn} />
-          {:else if tab === "case"}
+          {:else if play.tab === "case"}
             <div class="case">
               <section>
                 <label for="title">Case title</label>
@@ -162,6 +209,24 @@
     <button onclick={undo} disabled={!$snapshot?.canUndo || $status !== "open"} title="Ctrl+Z">Undo</button>
     <button onclick={redo} disabled={!$snapshot?.canRedo || $status !== "open"} title="Ctrl+Shift+Z">Redo</button>
     <button onclick={() => (showHistory = !showHistory)} class:on={showHistory}>History</button>
+    {#if overlay}
+      <span class="toolkit" role="group" aria-label="Focus area">
+        {#each tools as item, i (item)}
+          <button
+            type="button"
+            class="tool"
+            class:on={overlay.focus === item}
+            title="{item === 'map' ? 'Map' : item === 'notes' ? 'Notes' : 'Newspaper'} in the focus area (Ctrl+{i === 0 ? 1 : item === 'notes' ? 3 : 2})"
+            onclick={() => toggleFocus(item)}
+          >
+            <ToolIcon kind={item} size={24} state={overlay.focus === item ? "open" : "folded"} />
+          </button>
+        {/each}
+      </span>
+      <button type="button" class="hide" class:on={overlay.hideAll} onclick={toggleHideAll} title="Hide everything on the overlay (H)">
+        {overlay.hideAll ? "Hidden" : "Hide all"}
+      </button>
+    {/if}
     <span class="conn" title={$status}>
       <span class="dot {$status}"></span>
       {$status === "open" ? "Connected" : $status === "connecting" ? "Connecting…" : "Offline"}
@@ -237,6 +302,34 @@
   footer button.on {
     background: #2b2118;
     color: #fff;
+  }
+  .toolkit {
+    display: flex;
+    gap: 2px;
+  }
+  .tool {
+    padding: 2px 4px;
+  }
+  .tool.on {
+    background: #fff8e1;
+    border-color: #b08d2b;
+    box-shadow: inset 0 -3px 0 #b08d2b;
+  }
+  footer .hide.on {
+    background: #8b1e1e;
+    border-color: #8b1e1e;
+  }
+  .hidden-banner {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 10px;
+    background: #8b1e1e;
+    color: #fff;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 600;
   }
   /* Dock first: one scrolling column with the map on top. */
   .play {
@@ -326,6 +419,7 @@
   }
   footer {
     display: flex;
+    flex-wrap: wrap;
     gap: 8px;
     align-items: center;
     border-top: 1px solid #d8c9aa;

@@ -26,6 +26,8 @@ export interface Connection {
   mirror: Readable<MirrorView | null>;
   /** Latest presentation cue; seq changes even when the same cue repeats. */
   cue: Readable<{ cue: Cue; seq: number } | null>;
+  /** Compact notes strip scroll position (0–1), set from the panel's preview. */
+  notesScroll: Readable<number>;
   dispatch(action: ActionInput): void;
   undo(): void;
   redo(): void;
@@ -33,6 +35,7 @@ export interface Connection {
   jump(offset: number): void;
   sendMirror(view: MirrorView): void;
   sendCue(cue: Cue): void;
+  sendNotesScroll(value: number): void;
 }
 
 export function connect(): Connection {
@@ -42,6 +45,7 @@ export function connect(): Connection {
   const mirror = writable<MirrorView | null>(null);
   const cue = writable<{ cue: Cue; seq: number } | null>(null);
   let cueSeq = 0;
+  const notesScroll = writable(0);
   let ws: WebSocket | null = null;
   let retryMs = 500;
   let latestRev = -1;
@@ -63,6 +67,10 @@ export function connect(): Connection {
       }
       if (msg.type === "mirror") {
         mirror.set(msg.view);
+        return;
+      }
+      if (msg.type === "notesScroll") {
+        notesScroll.set(msg.value);
         return;
       }
       if (msg.type === "cue") {
@@ -102,11 +110,16 @@ export function connect(): Connection {
     lastError,
     mirror,
     cue,
+    notesScroll,
     dispatch: (action) => send({ type: "action", action }),
     undo: () => send({ type: "undo" }),
     redo: () => send({ type: "redo" }),
     jump: (offset) => send({ type: "jump", offset }),
     sendMirror: (view) => send({ type: "mirror", view }),
     sendCue: (c) => send({ type: "cue", cue: c }),
+    sendNotesScroll: (value) => {
+      notesScroll.set(value);
+      send({ type: "notesScroll", value });
+    },
   };
 }

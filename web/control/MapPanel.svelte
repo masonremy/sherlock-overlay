@@ -180,6 +180,8 @@
     }
     if ("zoneId" in place) offerMet(stepId, place);
     else metOffer = null;
+    const placeName = "zoneId" in place ? (map?.zones.find((z) => z.id === place.zoneId)?.label ?? "") : place.customLabel;
+    play.lastRecorded = { stepId, n, place: placeName, at: Date.now() };
     play.resetTarget();
     play.selected = null;
     kind = "lead";
@@ -224,8 +226,10 @@
       e.preventDefault();
       record();
     } else if (e.key === "Escape") {
+      // Esc peels back one layer: insert/replace target, selection, then the focus area.
       if (play.target.kind !== "append") play.resetTarget();
-      else play.selected = null;
+      else if (play.selected) play.selected = null;
+      else if (app && app.overlay.focus !== "map") dispatch({ type: "overlay/returnFocus" });
     } else if (e.key === "0") {
       playMap?.fit();
     } else if (e.key === "c" || e.key === "C") {

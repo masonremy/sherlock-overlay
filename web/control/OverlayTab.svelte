@@ -32,6 +32,26 @@
       {/each}
     </fieldset>
 
+    <fieldset>
+      <legend>Visibility</legend>
+      <label>
+        <input
+          type="checkbox"
+          checked={app.overlay.hideMap}
+          onchange={(e) => dispatch({ type: "overlay/configure", patch: { hideMap: e.currentTarget.checked } })}
+        />
+        <span><strong>Hide the map</strong> <small>e.g. while reading a spoiler-sensitive paragraph; recording still works.</small></span>
+      </label>
+      <label>
+        <input
+          type="checkbox"
+          checked={app.overlay.hideAll}
+          onchange={(e) => dispatch({ type: "overlay/configure", patch: { hideAll: e.currentTarget.checked } })}
+        />
+        <span><strong>Hide everything</strong> <small>Panic switch (H). Hide single notes or characters from their tabs.</small></span>
+      </label>
+    </fieldset>
+
     {#if caseMaps.length > 1}
       <label class="stack">
         Map shown on the overlay

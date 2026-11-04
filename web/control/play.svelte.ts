@@ -2,12 +2,28 @@
 // syncs: the panel's private browsing never reaches the overlay (except through
 // mirror mode, which streams the view separately).
 
+import type { NoteFilter } from "../lib/notes";
+
 export type RecordTarget =
   | { kind: "append" }
   | { kind: "insert"; index: number }
   | { kind: "replace"; stepId: string };
 
+export type Tab = "trail" | "cast" | "keys" | "notes" | "case" | "overlay";
+export const TABS: Tab[] = ["trail", "notes", "cast", "keys", "case", "overlay"];
+
 export class PlayState {
+  /** Tab under the map. */
+  tab = $state<Tab>("trail");
+  /** Notes tab filter (set by clicking a character, place or step). */
+  noteFilter = $state<NoteFilter>(null);
+  /** The step just recorded, so a note typed next can offer to link to it. */
+  lastRecorded = $state<{ stepId: string; n: number; place: string; at: number } | null>(null);
+  /** Offer "Link to step N?" after a quick note. */
+  suggestStepLinks = $state(true);
+  /** Bumped to focus the quick-note box (N). */
+  quickNoteFocus = $state(0);
+
   /** Map shown in the panel. */
   mapId = $state<string | null>(null);
   /** Selected zone on the panel map: what Record would commit. */
@@ -29,5 +45,10 @@ export class PlayState {
 
   resetTarget() {
     this.target = { kind: "append" };
+  }
+
+  showNotes(filter: NoteFilter) {
+    this.noteFilter = filter;
+    this.tab = "notes";
   }
 }
