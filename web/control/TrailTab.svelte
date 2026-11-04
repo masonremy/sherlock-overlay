@@ -1,6 +1,7 @@
-﻿<script lang="ts">
+<script lang="ts">
   import type { ActionInput } from "../../shared/actions";
   import type { TrailStep } from "../../shared/schema";
+  import { formatClock, timesheet } from "../../shared/game";
   import Avatar from "../lib/Avatar.svelte";
   import type { Connection } from "../lib/socket";
   import { isNumbered, KIND_LABELS, leadCount, stepPlace } from "../lib/trail";
@@ -17,6 +18,8 @@
   const steps = $derived(draft ?? app?.trail ?? []);
   const editMode = $derived(play.editing || !!draft);
   let expanded = $state<string | null>(null);
+  const clocks = $derived(app?.case.timesheet ? timesheet(steps, app.maps).steps : null);
+  const playerName = (id: string | null) => app?.case.players.find((p) => p.id === id)?.name ?? null;
   let notice = $state<string | null>(null);
 
   // Follow drafts opened or closed elsewhere (another device, a reload, undo).
@@ -171,6 +174,8 @@
               {#if who}<span class="face" title={who.name}><Avatar character={who} size={22} ring={false} /></span>{/if}
             {/each}
             {#if step.note}<span class="note">{step.note}</span>{/if}
+            {#if playerName(step.by)}<span class="by" title="Lead investigator">{playerName(step.by)}</span>{/if}
+            {#if clocks}<span class="time">{formatClock(clocks[i]).replace(/^Day (\d+) · /, "D$1 ")}</span>{/if}
           </button>
         </div>
 
@@ -180,6 +185,17 @@
               <select value={step.kind} onchange={(e) => update(step, { kind: e.currentTarget.value as TrailStep["kind"] })} aria-label="Kind">
                 {#each Object.entries(KIND_LABELS) as [k, label]}<option value={k}>{label}</option>{/each}
               </select>
+              {#if app?.case.timesheet && step.kind !== "deadEnd"}
+                <input
+                  class="minutes"
+                  type="number"
+                  min="0"
+                  placeholder="min"
+                  aria-label="Duration in minutes"
+                  value={step.duration ?? ""}
+                  onchange={(e) => update(step, { duration: e.currentTarget.value === "" ? null : Math.round(Number(e.currentTarget.value)) })}
+                />
+              {/if}
               {#if !step.zoneId}
                 <input
                   value={step.customLabel ?? ""}
@@ -385,6 +401,20 @@
   .face {
     display: flex;
     flex: none;
+  }
+  .by,
+  .time {
+    flex: none;
+    font-size: 11px;
+    color: #6b5a44;
+  }
+  .time {
+    margin-left: auto;
+    font-variant-numeric: tabular-nums;
+  }
+  .minutes {
+    width: 64px;
+    flex: none !important;
   }
   .people {
     display: flex;

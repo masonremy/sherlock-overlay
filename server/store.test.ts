@@ -1,4 +1,4 @@
-﻿import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { mkdtemp, readdir, readFile, rm, writeFile, mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -240,5 +240,67 @@ describe("AppStore: portrait library", () => {
     await store.flush();
     const files = await readdir(portraitsDir);
     expect(files.some((f) => /^library\.broken-\d+\.json$/.test(f))).toBe(true);
+  });
+});
+
+describe("AppStore: layouts, theme and papers", () => {
+  it("starts with the default full layout and theme without writing them", async () => {
+    const store = await load();
+    expect(Object.keys(store.state.layouts)).toEqual(["full"]);
+    expect(store.state.theme.display).toBe("IM Fell English");
+    store.dispatch({ type: "debug/ping" });
+    await store.flush();
+    await expect(readFile(join(root, "layouts.json"), "utf8")).rejects.toThrow();
+    await expect(readFile(join(root, "theme.json"), "utf8")).rejects.toThrow();
+  });
+
+  it("saves layouts.json, theme.json and papers/library.json when they change, shared across cases", async () => {
+    const a = await load();
+    a.dispatch({ type: "layout/save", layout: { ...a.state.layouts.full, id: "corner", name: "Corner" } });
+    a.dispatch({ type: "theme/set", theme: { display: "Special Elite", body: "Lato", components: {} } });
+    a.dispatch({ type: "paper/add", paper: { id: "p1", file: "np-0123456789abcdef.webp", date: "1889-03-14", title: "" } });
+    await a.flush();
+    expect(Object.keys(JSON.parse(await readFile(join(root, "layouts.json"), "utf8")))).toEqual(["full", "corner"]);
+    expect(JSON.parse(await readFile(join(root, "theme.json"), "utf8")).display).toBe("Special Elite");
+    expect(Object.keys(JSON.parse(await readFile(join(root, "papers", "library.json"), "utf8")))).toEqual(["p1"]);
+
+    const b = await load("other");
+    expect(Object.keys(b.state.layouts)).toEqual(["full", "corner"]);
+    expect(b.state.theme.display).toBe("Special Elite");
+    expect(b.state.papers.p1.date).toBe("1889-03-14");
+  });
+});
+
+describe("AppStore: cases", () => {
+  it("creates a case from the current one, switches to it, and lists both", async () => {
+    const store = await load("first");
+    store.dispatch({ type: "case/update", patch: { title: "The Tin Soldier", number: "3", box: "Thames Murders" } });
+    store.dispatch({ type: "character/add", character: { id: "c1", name: "Mrs. Example" } });
+    const id = await store.createCase("next");
+    expect(store.caseId).toBe(id);
+    expect(id).toBe("thames-murders-4");
+    expect(store.state.case.number).toBe("4");
+    expect(store.state.characters.map((c) => c.name)).toEqual(["Mrs. Example"]);
+    expect(store.canUndo).toBe(false);
+
+    const cases = await store.listCases();
+    expect(cases.map((c) => c.id).sort()).toEqual(["first", "thames-murders-4"]);
+
+    await store.switchCase("first");
+    expect(store.state.case.title).toBe("The Tin Soldier");
+  });
+
+  it("saves the case it was editing before switching away", async () => {
+    const store = await load("first");
+    store.dispatch({ type: "case/setTitle", title: "Unsaved" });
+    await store.switchCase("second");
+    const saved = JSON.parse(await readFile(join(casesDir, "first", "state.json"), "utf8"));
+    expect(saved.case.title).toBe("Unsaved");
+    expect(store.state.case.title).toBe("");
+  });
+
+  it("rejects case ids that aren't safe folder names", async () => {
+    const store = await load();
+    await expect(store.switchCase("../escape")).rejects.toThrow();
   });
 });

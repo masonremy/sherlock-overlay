@@ -1,4 +1,4 @@
-﻿<script lang="ts">
+<script lang="ts">
   import type { Connection } from "../lib/socket";
 
   let { conn }: { conn: Connection } = $props();
@@ -49,6 +49,14 @@
           onchange={(e) => dispatch({ type: "overlay/configure", patch: { hideAll: e.currentTarget.checked } })}
         />
         <span><strong>Hide everything</strong> <small>Panic switch (H). Hide single notes or characters from their tabs.</small></span>
+      </label>
+      <label>
+        <input
+          type="checkbox"
+          checked={app.overlay.reducedMotion}
+          onchange={(e) => dispatch({ type: "overlay/configure", patch: { reducedMotion: e.currentTarget.checked } })}
+        />
+        <span><strong>Reduced motion</strong> <small>Quick fades instead of drops, draws, slides and flips; no pulsing.</small></span>
       </label>
     </fieldset>
 

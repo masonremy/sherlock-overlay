@@ -1,4 +1,4 @@
-﻿<script lang="ts">
+<script lang="ts">
   import { tick } from "svelte";
   import type { Character, MapDef } from "../../shared/schema";
   import { mentionAt, type MentionLink as Link } from "../lib/notes";

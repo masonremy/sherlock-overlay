@@ -1,4 +1,4 @@
-﻿<script lang="ts">
+<script lang="ts">
   import type { ActionInput } from "../../shared/actions";
   import type { Character, Note } from "../../shared/schema";
   import { DEFAULT_LAYOUT } from "../../shared/layout";

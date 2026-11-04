@@ -1,4 +1,4 @@
-﻿// Turns a dropped/picked file into an uploaded map image. PDFs are rasterised
+// Turns a dropped/picked file into an uploaded map image. PDFs are rasterised
 // here in the browser (pdf.js), so the server only ever stores raster images.
 
 import type { PDFDocumentProxy } from "pdfjs-dist";
@@ -71,7 +71,7 @@ export async function uploadMapImage(image: PreparedImage): Promise<string> {
 }
 
 /** Uploads image bytes to maps/ or portraits/; returns the stored file name. */
-export async function uploadImage(route: "maps" | "portraits", blob: Blob): Promise<string> {
+export async function uploadImage(route: "maps" | "portraits" | "papers", blob: Blob): Promise<string> {
   const res = await fetch(`/api/${route}/images`, {
     method: "POST",
     headers: { "Content-Type": blob.type || "application/octet-stream" },

@@ -12,6 +12,7 @@ const step = (id: string, zoneId: string | null, kind: TrailStep["kind"] = "lead
   characterIds: [],
   by: null,
   clock: null,
+  duration: null,
   at: "",
 });
 

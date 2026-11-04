@@ -1,4 +1,4 @@
-﻿<script lang="ts">
+<script lang="ts">
   import Avatar from "../lib/Avatar.svelte";
   import { newId, STATUS_COLORS, STATUS_LABELS } from "../lib/cast";
   import { centerCrop, cropToBlob, loadImage, uploadPortrait } from "../lib/portraitImage";

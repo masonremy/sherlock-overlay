@@ -43,7 +43,7 @@
     <div class="slot" style:width="{tile}px">
       {#key k.unlocked}
         <div class="tile" class:unlocked={k.unlocked} style:width="{tile}px" style:height="{tile}px" in:flipIn={{ enabled: animate && k.unlocked }}>
-          <span class="letter" style:font-size="{tile * 0.55}px">{k.letter}</span>
+          <span class="letter" style:font-size="calc({tile * 0.55}px * var(--fs, 1))">{k.letter}</span>
           {#if !k.unlocked}
             <svg class="lock" viewBox="0 0 24 24" width={tile * 0.32} height={tile * 0.32} aria-hidden="true">
               <path d="M7 10V7a5 5 0 0 1 10 0v3" fill="none" stroke="currentColor" stroke-width="2.4" />
@@ -91,7 +91,7 @@
     color: #2b2118;
   }
   .letter {
-    font-family: "IM Fell English", Georgia, serif;
+    font-family: var(--font-display);
     line-height: 1;
   }
   .lock {

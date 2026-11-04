@@ -2,7 +2,8 @@
 
 import type { ActionInput } from "../../shared/actions";
 
-export type FocusItem = "map" | "newspaper" | "notes";
+export type FocusItem = "map" | "newspaper" | "notes" | "verdict";
+export type ToolItem = Exclude<FocusItem, "verdict">;
 
 /** Toolkit buttons and Ctrl+1/2/3: select an item, or dismiss it if it's already in focus. */
 export function focusAction(current: FocusItem, target: FocusItem): ActionInput | null {
@@ -10,7 +11,7 @@ export function focusAction(current: FocusItem, target: FocusItem): ActionInput 
   return target === "map" ? null : { type: "overlay/returnFocus" };
 }
 
-/** Items on the toolkit bar; the newspaper appears once the case has one. */
-export function toolkitItems(newspaperImage: string | null): FocusItem[] {
-  return newspaperImage ? ["map", "newspaper", "notes"] : ["map", "notes"];
+/** Items on the toolkit bar; the newspaper appears once the case has one. The verdict is shown from the Case tab. */
+export function toolkitItems(paperId: string | null): ToolItem[] {
+  return paperId ? ["map", "newspaper", "notes"] : ["map", "notes"];
 }

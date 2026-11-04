@@ -1,4 +1,4 @@
-﻿<script lang="ts">
+<script lang="ts">
   import type { Cameo, Character } from "../../shared/schema";
   import Avatar from "../lib/Avatar.svelte";
   import {

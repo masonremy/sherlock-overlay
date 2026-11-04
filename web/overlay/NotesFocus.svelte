@@ -78,7 +78,7 @@
   h2 {
     margin: 0 0 12px;
     font-family: var(--font-display);
-    font-size: 40px;
+    font-size: calc(40px * var(--fs, 1));
     font-weight: 400;
   }
   .columns {
@@ -100,7 +100,7 @@
     padding-bottom: 4px;
     border-bottom: 2px solid var(--sepia);
     font-family: var(--font-display);
-    font-size: 27px;
+    font-size: calc(27px * var(--fs, 1));
     font-weight: 400;
   }
   p {
@@ -109,7 +109,7 @@
     gap: 0 8px;
     align-items: baseline;
     margin: 0 0 10px;
-    font-size: 25px;
+    font-size: calc(25px * var(--fs, 1));
     line-height: 1.35;
   }
   .face {

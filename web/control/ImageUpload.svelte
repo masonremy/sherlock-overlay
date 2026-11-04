@@ -8,12 +8,19 @@
     pdfThumbnail,
     prepareRaster,
     rasterizePdfPage,
-    uploadMapImage,
+    uploadImage,
     type PreparedImage,
     type UploadedImage,
   } from "../lib/mapImage";
 
-  let { onDone, prompt = "Map image" }: { onDone: (img: UploadedImage) => void; prompt?: string } = $props();
+  interface Props {
+    onDone: (img: UploadedImage) => void;
+    prompt?: string;
+    /** Where the image is stored: maps/ or papers/. */
+    route?: "maps" | "papers";
+  }
+
+  let { onDone, prompt = "Map image", route = "maps" }: Props = $props();
 
   let busy = $state<string | null>(null);
   let error = $state<string | null>(null);
@@ -57,7 +64,7 @@
     busy = `Rendering ${what || sourceName}…`;
     const image = await prepare();
     busy = `Uploading ${formatBytes(image.blob.size)} (${image.width} × ${image.height})…`;
-    const file = await uploadMapImage(image);
+    const file = await uploadImage(route, image.blob);
     busy = null;
     onDone({ file, width: image.width, height: image.height, sourceName });
   }

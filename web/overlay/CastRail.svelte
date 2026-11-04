@@ -4,6 +4,7 @@
   import type { Character, MapDef } from "../../shared/schema";
   import Avatar from "../lib/Avatar.svelte";
   import { STATUS_COLORS, STATUS_LABELS } from "../lib/cast";
+  import { ms } from "../lib/motion.svelte";
 
   // Portraits in order of first appearance. Goes vertical or horizontal with
   // the box's shape and shrinks cards to fit everyone.
@@ -40,8 +41,8 @@
     <div
       class="card"
       style:--size="{card}px"
-      animate:flip={{ duration: 400 }}
-      in:fly={{ x: vertical ? -120 : 0, y: vertical ? 0 : 60, duration: 500 }}
+      animate:flip={{ duration: ms(400) }}
+      in:fly={{ x: vertical ? -120 : 0, y: vertical ? 0 : 60, duration: ms(500) }}
     >
       <Avatar character={c} size={avatar} />
       <div class="text">
@@ -88,21 +89,21 @@
   }
   strong {
     overflow: hidden;
-    font-family: "IM Fell English", Georgia, serif;
-    font-size: 24px;
+    font-family: var(--font-display);
+    font-size: calc(24px * var(--fs, 1));
     font-weight: 400;
     white-space: nowrap;
     text-overflow: ellipsis;
   }
   span {
     overflow: hidden;
-    font-size: 17px;
+    font-size: calc(17px * var(--fs, 1));
     color: #4a3b2a;
     white-space: nowrap;
     text-overflow: ellipsis;
   }
   .status {
-    font-size: 15px;
+    font-size: calc(15px * var(--fs, 1));
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;

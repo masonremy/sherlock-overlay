@@ -1,4 +1,4 @@
-﻿import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import type { Character, MapDef, Note, TrailStep } from "../../shared/schema";
 import { autoLinks, filterNotes, fromDisplay, linksInText, mentionAt, noteRingZones, parseQuickNote, segments, toDisplay } from "./notes";
 
@@ -118,6 +118,7 @@ describe("noteRingZones", () => {
     characterIds: [],
     by: null,
     clock: null,
+    duration: null,
     at: "",
   });
 

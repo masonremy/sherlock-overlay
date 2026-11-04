@@ -3,6 +3,7 @@
   import type { Character } from "../../shared/schema";
   import Avatar from "../lib/Avatar.svelte";
   import { STATUS_COLORS, STATUS_LABELS } from "../lib/cast";
+  import { motion } from "../lib/motion.svelte";
 
   // A newly met character's introduction: slides in large over the focus area,
   // then shrinks off toward the cast rail on the left.
@@ -10,9 +11,11 @@
   let { character }: { character: Character } = $props();
 
   function enter(_node: Element) {
+    if (motion.reduced) return { duration: 200, css: (t: number) => `opacity:${t}` };
     return { duration: 550, easing: cubicOut, css: (t: number) => `opacity:${t}; transform: translateX(${(1 - t) * 260}px)` };
   }
   function leave(_node: Element) {
+    if (motion.reduced) return { duration: 200, css: (t: number) => `opacity:${t}` };
     return {
       duration: 550,
       easing: cubicIn,
@@ -50,13 +53,13 @@
     max-width: 520px;
   }
   .met {
-    font-family: "IM Fell English", Georgia, serif;
+    font-family: var(--font-display);
     font-size: 26px;
     font-style: italic;
     color: #6b5a44;
   }
   strong {
-    font-family: "IM Fell English", Georgia, serif;
+    font-family: var(--font-display);
     font-size: 58px;
     font-weight: 400;
     line-height: 1.05;

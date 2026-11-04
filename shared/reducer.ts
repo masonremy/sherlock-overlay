@@ -25,7 +25,7 @@ export function reduce(state: AppState, action: Action): AppState {
 
     case "map/create": {
       if (state.maps[action.map.id]) throw new ActionError(`A map with id "${action.map.id}" already exists`);
-      const map: MapDef = { ...action.map, zones: [] };
+      const map: MapDef = { ...action.map, zones: [], informants: [], adjacency: {} };
       return withCaseMap(setMap(state, map), map.id);
     }
     case "map/import":
@@ -190,6 +190,73 @@ export function reduce(state: AppState, action: Action): AppState {
       return { ...state, notes: state.notes.toSpliced(i, 1).toSpliced(action.toIndex, 0, state.notes[i]) };
     }
 
+    case "case/update": {
+      return { ...state, case: { ...state.case, ...action.patch } };
+    }
+
+    case "map/setInformants": {
+      const map = getMap(state, action.mapId);
+      for (const inf of action.informants) zoneIndex(map, inf.zoneId);
+      return setMap(state, { ...map, informants: action.informants });
+    }
+    case "map/setAdjacency":
+      return setMap(state, { ...getMap(state, action.mapId), adjacency: action.adjacency });
+
+    case "paper/add":
+      if (state.papers[action.paper.id]) throw new ActionError(`Paper "${action.paper.id}" already exists`);
+      return { ...state, papers: { ...state.papers, [action.paper.id]: action.paper } };
+    case "paper/update": {
+      const p = getPaper(state, action.paperId);
+      const next = { ...state, papers: { ...state.papers, [p.id]: { ...p, ...action.patch } } };
+      // The case's own paper sets the case date.
+      if (state.newspaper.paperId === p.id && action.patch.date !== undefined) {
+        return { ...next, case: { ...next.case, paperDate: action.patch.date } };
+      }
+      return next;
+    }
+    case "paper/delete": {
+      getPaper(state, action.paperId);
+      const { [action.paperId]: _deleted, ...papers } = state.papers;
+      const n = state.newspaper;
+      const newspaper = {
+        ...n,
+        paperId: n.paperId === action.paperId ? null : n.paperId,
+        showing: n.showing === action.paperId ? null : n.showing,
+      };
+      return { ...state, papers, newspaper };
+    }
+    case "newspaper/update": {
+      const { patch } = action;
+      if (patch.paperId) getPaper(state, patch.paperId);
+      if (patch.showing) getPaper(state, patch.showing);
+      const next = { ...state, newspaper: { ...state.newspaper, ...patch } };
+      if (patch.paperId) {
+        const date = state.papers[patch.paperId].date;
+        if (date) return { ...next, case: { ...next.case, paperDate: date } };
+      }
+      return next;
+    }
+
+    case "scoring/update":
+      for (const id of action.patch.freeStepIds ?? []) checkStepExists(state, id);
+      return { ...state, scoring: { ...state.scoring, ...action.patch } };
+
+    case "layout/save":
+      return { ...state, layouts: { ...state.layouts, [action.layout.id]: action.layout } };
+    case "layout/delete": {
+      if (!state.layouts[action.layoutId]) throw new ActionError(`No layout "${action.layoutId}"`);
+      const { [action.layoutId]: _deleted, ...layouts } = state.layouts;
+      const remaining = Object.keys(layouts);
+      if (!remaining.length) throw new ActionError("Can't delete the last layout");
+      const layoutId = state.overlay.layoutId === action.layoutId ? remaining[0] : state.overlay.layoutId;
+      return { ...state, layouts, overlay: { ...state.overlay, layoutId } };
+    }
+    case "theme/set":
+      return { ...state, theme: action.theme };
+    case "overlay/setLayout":
+      if (!state.layouts[action.layoutId]) throw new ActionError(`No layout "${action.layoutId}"`);
+      return { ...state, overlay: { ...state.overlay, layoutId: action.layoutId } };
+
     case "overlay/setFocus": {
       const { focus } = state.overlay;
       if (focus === action.focus) return state;
@@ -235,6 +302,12 @@ function getPortrait(state: AppState, portraitId: string) {
 /** A place reference (character address, note place) must name an existing zone. */
 function checkPlace(state: AppState, place: { mapId: string; zoneId: string } | null): void {
   if (place) zoneIndex(getMap(state, place.mapId), place.zoneId);
+}
+
+function getPaper(state: AppState, paperId: string) {
+  const p = state.papers[paperId];
+  if (!p) throw new ActionError(`No paper "${paperId}" in the library`);
+  return p;
 }
 
 function noteIndex(state: AppState, noteId: string): number {

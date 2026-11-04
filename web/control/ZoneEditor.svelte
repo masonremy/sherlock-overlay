@@ -4,6 +4,7 @@
   import { centroid, incrementLabel, roundPoint, slugify, uniqueId, type Point } from "../../shared/geometry";
   import type { UploadedImage } from "../lib/mapImage";
   import ImageUpload from "./ImageUpload.svelte";
+  import MapExtras from "./MapExtras.svelte";
   import ZoneCanvas from "./ZoneCanvas.svelte";
   import ZoneInspector from "./ZoneInspector.svelte";
   import { TOOLS, type Tool } from "./zoneTools";
@@ -395,6 +396,8 @@
             {/each}
           </ul>
         </section>
+
+        <MapExtras {conn} {map} {selected} />
       </aside>
     </div>
   {/if}
@@ -529,6 +532,7 @@
     flex-direction: column;
     gap: 8px;
     min-height: 0;
+    overflow: auto;
   }
   .list {
     display: flex;

@@ -1,4 +1,4 @@
-﻿<script lang="ts">
+<script lang="ts">
   import { Tween } from "svelte/motion";
   import { cubicInOut } from "svelte/easing";
   import type { Point } from "../../shared/geometry";
@@ -7,6 +7,7 @@
   import { fitView, frameBox, type View } from "../lib/mapMath";
   import { frameAnchors } from "../lib/trail";
   import TrailLayer from "../lib/TrailLayer.svelte";
+  import { ms } from "../lib/motion.svelte";
 
   interface Props {
     map: MapDef;
@@ -56,7 +57,7 @@
   $effect(() => {
     const t = target;
     // First frame jumps; afterwards ease, quickly when following the panel live.
-    view.set(t, { duration: !placed ? 0 : mode === "mirror" ? 250 : 900 });
+    view.set(t, { duration: !placed ? 0 : ms(mode === "mirror" ? 250 : 900) });
     placed = true;
   });
 </script>

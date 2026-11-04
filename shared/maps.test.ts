@@ -78,8 +78,8 @@ describe("map/import", () => {
   });
 
   it("keeps unknown top-level fields so newer files survive a round trip", () => {
-    const s = run(createInitialState(T), { type: "map/import", map: { ...def, informants: [{ name: "x" }] }, replace: false });
-    expect((s.maps.london as Record<string, unknown>).informants).toEqual([{ name: "x" }]);
+    const s = run(createInitialState(T), { type: "map/import", map: { ...def, futureField: [{ name: "x" }] }, replace: false });
+    expect((s.maps.london as Record<string, unknown>).futureField).toEqual([{ name: "x" }]);
   });
 });
 

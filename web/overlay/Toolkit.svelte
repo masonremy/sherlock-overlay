@@ -1,19 +1,19 @@
 <script lang="ts">
-  import type { FocusItem } from "../lib/focus";
+  import type { FocusItem, ToolItem } from "../lib/focus";
   import ToolIcon from "../lib/icons/ToolIcon.svelte";
 
   // The toolkit bar: one icon per focus item; the one in focus is lit.
 
   interface Props {
-    items: FocusItem[];
+    items: ToolItem[];
     focus: FocusItem;
-    dots: Partial<Record<FocusItem, boolean>>;
+    dots: Partial<Record<ToolItem, boolean>>;
     /** Icon size in px; the overlay computes where each icon sits for fold animations. */
     iconSize: number;
   }
 
   let { items, focus, dots, iconSize }: Props = $props();
-  const LABELS: Record<FocusItem, string> = { map: "Map", newspaper: "Paper", notes: "Notes" };
+  const LABELS: Record<ToolItem, string> = { map: "Map", newspaper: "Paper", notes: "Notes" };
 </script>
 
 <div class="toolkit">
@@ -51,7 +51,7 @@
   }
   span {
     font-family: var(--font-body);
-    font-size: 13px;
+    font-size: calc(13px * var(--fs, 1));
     color: var(--ink);
     text-transform: uppercase;
     letter-spacing: 0.08em;

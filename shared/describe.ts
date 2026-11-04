@@ -98,6 +98,35 @@ export function describeAction(action: Action, state: AppState): string {
       return `Deleted note “${clip(noteText(action.noteId))}”`;
     case "note/move":
       return "Reordered notes";
+    case "case/update":
+      return `Edited case details (${Object.keys(action.patch).join(", ")})`;
+    case "map/setInformants":
+      return `Edited informants on ${mapName(action.mapId)}`;
+    case "map/setAdjacency":
+      return `Edited area adjacency on ${mapName(action.mapId)}`;
+    case "paper/add":
+      return `Added newspaper ${action.paper.title || action.paper.date || ""}`.trim();
+    case "paper/update":
+      return "Edited a newspaper";
+    case "paper/delete":
+      return "Removed a newspaper";
+    case "newspaper/update": {
+      const p = action.patch;
+      if (p.zoom !== undefined) return p.zoom ? "Zoomed the newspaper" : "Showed the whole page";
+      if (p.showing !== undefined) return "Turned to another paper";
+      if (p.paperId !== undefined) return "Set the case's newspaper";
+      return "Updated the newspaper";
+    }
+    case "scoring/update":
+      return "Updated scoring";
+    case "layout/save":
+      return `Saved layout ${action.layout.name || action.layout.id}`;
+    case "layout/delete":
+      return `Deleted layout ${action.layoutId}`;
+    case "theme/set":
+      return "Changed fonts";
+    case "overlay/setLayout":
+      return `Overlay layout → ${state.layouts[action.layoutId]?.name || action.layoutId}`;
     case "overlay/setFocus":
       return `Focus area → ${action.focus}`;
     case "overlay/returnFocus":

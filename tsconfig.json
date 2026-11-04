@@ -1,4 +1,4 @@
-﻿{
+{
   "extends": "@tsconfig/svelte/tsconfig.json",
   "compilerOptions": {
     "target": "ES2022",
@@ -13,5 +13,5 @@
     "verbatimModuleSyntax": true,
     "resolveJsonModule": true
   },
-  "include": ["shared/**/*.ts", "server/**/*.ts", "web/**/*.ts", "web/**/*.svelte", "vite.config.ts"]
+  "include": ["shared/**/*.ts", "server/**/*.ts", "web/**/*.ts", "web/**/*.svelte", "vite.config.ts", "tests/**/*.ts", "playwright.config.ts"]
 }

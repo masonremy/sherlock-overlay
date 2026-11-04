@@ -8,3 +8,6 @@ fonts/
 layouts.json
 theme.json
 portraits/
+papers/
+test-results/
+playwright-report/

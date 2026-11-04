@@ -1,4 +1,4 @@
-﻿import "../lib/theme.css";
+import "../lib/theme.css";
 import { mount } from "svelte";
 import Control from "./Control.svelte";
 

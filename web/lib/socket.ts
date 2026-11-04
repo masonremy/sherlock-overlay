@@ -1,4 +1,4 @@
-﻿import { writable, type Readable } from "svelte/store";
+import { writable, type Readable } from "svelte/store";
 import { WS_PATH } from "../../shared/constants";
 import type { ClientMessage, Cue, MirrorView, ServerMessage } from "../../shared/protocol";
 import type { AppState } from "../../shared/schema";
@@ -12,6 +12,8 @@ export type Status = "connecting" | "open" | "closed";
 
 export interface Snapshot {
   rev: number;
+  /** Folder name of the open case under cases/. */
+  caseId: string;
   state: AppState;
   history: Timeline;
   canUndo: boolean;
@@ -49,6 +51,7 @@ export function connect(): Connection {
   let ws: WebSocket | null = null;
   let retryMs = 500;
   let latestRev = -1;
+  let latestCase = "";
 
   function open() {
     const proto = location.protocol === "https:" ? "wss:" : "ws:";
@@ -77,13 +80,16 @@ export function connect(): Connection {
         cue.set({ cue: msg.cue, seq: ++cueSeq });
         return;
       }
-      // A restarted server may reload an older rev from disk; accept it after a reconnect.
-      if (msg.rev < latestRev) return;
+      // A restarted server may reload an older rev from disk; accept it after a
+      // reconnect. Opening another case starts its own rev count.
+      if (msg.rev < latestRev && msg.caseId === latestCase) return;
+      latestCase = msg.caseId;
       latestRev = msg.rev;
       lastError.set(null);
       const { entries, index } = msg.history;
       snapshot.set({
         rev: msg.rev,
+        caseId: msg.caseId,
         state: msg.state,
         history: msg.history,
         canUndo: index > 0,

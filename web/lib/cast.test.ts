@@ -12,6 +12,7 @@ const step = (id: string, zoneId: string | null, characterIds: string[] = [], ki
   characterIds,
   by: null,
   clock: null,
+  duration: null,
   at: "",
 });
 

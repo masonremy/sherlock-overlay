@@ -9,8 +9,8 @@ export type RecordTarget =
   | { kind: "insert"; index: number }
   | { kind: "replace"; stepId: string };
 
-export type Tab = "trail" | "cast" | "keys" | "notes" | "case" | "overlay";
-export const TABS: Tab[] = ["trail", "notes", "cast", "keys", "case", "overlay"];
+export type Tab = "trail" | "cast" | "keys" | "notes" | "paper" | "case" | "overlay" | "layout";
+export const TABS: Tab[] = ["trail", "notes", "cast", "keys", "paper", "case", "overlay", "layout"];
 
 export class PlayState {
   /** Tab under the map. */

@@ -1,4 +1,4 @@
-﻿import { z } from "zod";
+import { z } from "zod";
 import type { Timeline } from "./history";
 import type { AppState } from "./schema";
 
@@ -34,7 +34,7 @@ export const ClientMessage = z.discriminatedUnion("type", [
 export type ClientMessage = z.infer<typeof ClientMessage>;
 
 export type ServerMessage =
-  | { type: "snapshot"; rev: number; state: AppState; history: Timeline }
+  | { type: "snapshot"; rev: number; caseId: string; state: AppState; history: Timeline }
   | { type: "mirror"; view: MirrorView }
   | { type: "cue"; cue: Cue }
   | { type: "notesScroll"; value: number }

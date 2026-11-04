@@ -5,17 +5,25 @@ import {
   FocusItem,
   ImageFile,
   ImageSize,
+  Informant,
+  IsoDate,
+  Layout,
+  LayoutId,
   Letter,
   LibraryPortrait,
   MapDef,
   MapId,
   MapView,
+  NormRect,
   NoteTag,
   OverlayState,
+  Paper,
+  PaperId,
   PlaceRef,
   PortraitFile,
   PortraitId,
   StepKind,
+  Theme,
   Zone,
   ZonePatch,
 } from "./schema";
@@ -90,6 +98,10 @@ const StepInput = z.object({
   customLabel: customLabel.default(null),
   kind: StepKind.default("lead"),
   note: z.string().max(500).default(""),
+  /** Timesheet mode: the lead's stated duration in minutes. */
+  duration: z.number().int().min(0).max(1440).nullable().default(null),
+  /** Lead investigator whose turn it was. */
+  by: z.string().max(40).nullable().default(null),
   at: z.string().max(40),
 });
 
@@ -101,9 +113,13 @@ const StepPatch = z
     kind: StepKind,
     note: z.string().max(500),
     characterIds: z.array(z.string()),
+    duration: z.number().int().min(0).max(1440).nullable(),
+    by: z.string().max(40).nullable(),
   })
   .partial()
   .strict();
+
+const points = z.number().int().min(-1000).max(1000).nullable();
 
 // Every state change is an action. The server validates incoming actions with
 // this schema before handing them to the reducer; checks that depend on the
@@ -111,6 +127,21 @@ const StepPatch = z
 
 export const Action = z.discriminatedUnion("type", [
   z.object({ type: z.literal("case/setTitle"), title: z.string().max(200) }),
+  z.object({
+    type: z.literal("case/update"),
+    patch: z
+      .object({
+        title: z.string().max(200),
+        number: z.string().trim().max(20),
+        box: z.string().trim().max(80),
+        paperDate: IsoDate.nullable(),
+        players: z.array(z.object({ id: z.string().min(1).max(40), name: z.string().trim().min(1).max(40) })).max(8),
+        timesheet: z.boolean(),
+        campaignId: z.string().trim().max(60).nullable(),
+      })
+      .partial()
+      .strict(),
+  }),
   // Changes nothing but still bumps rev; used to check sync end to end.
   z.object({ type: z.literal("debug/ping") }),
 
@@ -127,6 +158,8 @@ export const Action = z.discriminatedUnion("type", [
   z.object({ type: z.literal("map/rename"), mapId: MapId, name: z.string().trim().min(1).max(80) }),
   z.object({ type: z.literal("map/setImage"), mapId: MapId, image: ImageFile, imageSize: ImageSize }),
   z.object({ type: z.literal("map/delete"), mapId: MapId }),
+  z.object({ type: z.literal("map/setInformants"), mapId: MapId, informants: z.array(Informant).max(60) }),
+  z.object({ type: z.literal("map/setAdjacency"), mapId: MapId, adjacency: z.record(z.string(), z.array(z.string())) }),
 
   // Zones
   z.object({ type: z.literal("zone/add"), mapId: MapId, zone: Zone }),
@@ -175,7 +208,38 @@ export const Action = z.discriminatedUnion("type", [
   z.object({ type: z.literal("note/delete"), noteId: z.string() }),
   z.object({ type: z.literal("note/move"), noteId: z.string(), toIndex: z.number().int().min(0) }),
 
+  // Newspapers: a dated library shared by every case; the case points at its own.
+  z.object({ type: z.literal("paper/add"), paper: Paper }),
+  z.object({
+    type: z.literal("paper/update"),
+    paperId: PaperId,
+    patch: z.object({ date: IsoDate.nullable(), title: z.string().trim().max(80) }).partial().strict(),
+  }),
+  z.object({ type: z.literal("paper/delete"), paperId: PaperId }),
+  z.object({
+    type: z.literal("newspaper/update"),
+    patch: z
+      .object({ paperId: PaperId.nullable(), showing: PaperId.nullable(), zoom: NormRect.nullable(), opened: z.boolean() })
+      .partial()
+      .strict(),
+  }),
+
+  // Scoring (end of case)
+  z.object({
+    type: z.literal("scoring/update"),
+    patch: z
+      .object({ series1: points, series2: points, holmesLeads: z.number().int().min(0).max(200).nullable(), freeStepIds: z.array(z.string()) })
+      .partial()
+      .strict(),
+  }),
+
+  // Layouts and fonts (global)
+  z.object({ type: z.literal("layout/save"), layout: Layout }),
+  z.object({ type: z.literal("layout/delete"), layoutId: LayoutId }),
+  z.object({ type: z.literal("theme/set"), theme: Theme }),
+
   // Overlay
+  z.object({ type: z.literal("overlay/setLayout"), layoutId: LayoutId }),
   z.object({ type: z.literal("overlay/setFocus"), focus: FocusItem }),
   z.object({ type: z.literal("overlay/returnFocus") }),
   z.object({
@@ -187,6 +251,8 @@ export const Action = z.discriminatedUnion("type", [
         notesGroup: OverlayState.shape.notesGroup.unwrap(),
         noteRings: z.boolean(),
         notesAutoScroll: z.boolean(),
+        showGuides: z.boolean(),
+        reducedMotion: z.boolean(),
       })
       .partial()
       .strict(),

@@ -1,4 +1,4 @@
-﻿import type { Action } from "./actions";
+import type { Action } from "./actions";
 import { describeAction } from "./describe";
 import { reduce } from "./reducer";
 import type { AppState } from "./schema";

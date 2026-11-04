@@ -1,4 +1,4 @@
-﻿<script lang="ts">
+<script lang="ts">
   import { fade } from "svelte/transition";
   import type { Point } from "../../shared/geometry";
   import type { Character, MapDef, TrailStep } from "../../shared/schema";
@@ -140,7 +140,7 @@
   }
   text {
     fill: #fff;
-    font-family: "IM Fell English", Georgia, serif;
+    font-family: var(--font-display);
     font-weight: 700;
     text-anchor: middle;
     dominant-baseline: central;

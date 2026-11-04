@@ -161,7 +161,7 @@
     padding: 10px 26px 10px 18px;
     box-sizing: border-box;
     font-family: var(--font-body);
-    font-size: 21px;
+    font-size: calc(21px * var(--fs, 1));
     line-height: 1.35;
     color: var(--ink);
   }

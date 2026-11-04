@@ -1,4 +1,4 @@
-﻿<script lang="ts">
+<script lang="ts">
   import type { Character } from "../../shared/schema";
   import type { Connection } from "../lib/socket";
   import { newId } from "../lib/cast";

@@ -1,15 +1,18 @@
-﻿<script lang="ts">
-  import { focusAction, toolkitItems, type FocusItem } from "../lib/focus";
+<script lang="ts">
+  import { focusAction, toolkitItems, type ToolItem } from "../lib/focus";
   import ToolIcon from "../lib/icons/ToolIcon.svelte";
   import { connect } from "../lib/socket";
   import { stepPlace } from "../lib/trail";
+  import CaseTab from "./CaseTab.svelte";
   import CastTab from "./CastTab.svelte";
   import CharacterForm from "./CharacterForm.svelte";
   import HistoryDrawer from "./HistoryDrawer.svelte";
   import KeysTab from "./KeysTab.svelte";
+  import LayoutTab from "./LayoutTab.svelte";
   import MapPanel from "./MapPanel.svelte";
   import NotesTab from "./NotesTab.svelte";
   import OverlayTab from "./OverlayTab.svelte";
+  import PaperTab from "./PaperTab.svelte";
   import { PlayState, TABS } from "./play.svelte";
   import QuickNote from "./QuickNote.svelte";
   import TrailTab from "./TrailTab.svelte";
@@ -21,18 +24,23 @@
 
   // Two modes: Play (record the investigation) and Zones (build map definitions).
   type Mode = "play" | "zones";
-  const TAB_LABELS = { trail: "Trail", notes: "Notes", cast: "Cast", keys: "Keys", case: "Case", overlay: "Overlay" };
+  const TAB_LABELS = { trail: "Trail", notes: "Notes", cast: "Cast", keys: "Keys", paper: "Paper", case: "Case", overlay: "Overlay", layout: "Layout" };
   const initial = location.hash.slice(1);
   let mode = $state<Mode>(initial === "maps" || initial === "zones" ? "zones" : "play");
   play.tab = TABS.find((t) => t === initial) ?? "trail";
 
   // Focus area / toolkit
   const overlay = $derived($snapshot?.state.overlay);
-  const tools = $derived(toolkitItems($snapshot?.state.newspaper.image ?? null));
-  function toggleFocus(item: FocusItem) {
+  const tools = $derived(toolkitItems($snapshot?.state.newspaper.paperId ?? null));
+  function toggleFocus(item: ToolItem) {
     if (!overlay || !tools.includes(item)) return;
     const action = focusAction(overlay.focus, item);
-    if (action) dispatch(action);
+    if (!action) return;
+    dispatch(action);
+    // First opening of the paper clears the toolkit dot.
+    if (item === "newspaper" && action.type === "overlay/setFocus" && !$snapshot?.state.newspaper.opened) {
+      dispatch({ type: "newspaper/update", patch: { opened: true } });
+    }
   }
   function toggleHideAll() {
     if (overlay) dispatch({ type: "overlay/configure", patch: { hideAll: !overlay.hideAll } });
@@ -51,28 +59,6 @@
     history.replaceState(null, "", `#${mode === "zones" ? "zones" : play.tab}`);
   });
 
-  // Title edits commit on Enter or blur; Esc restores the live value.
-  let titleDraft = $state("");
-  let editingTitle = $state(false);
-  $effect(() => {
-    if (!editingTitle) titleDraft = $snapshot?.state.case.title ?? "";
-  });
-
-  function commitTitle() {
-    editingTitle = false;
-    if ($snapshot && titleDraft !== $snapshot.state.case.title) {
-      dispatch({ type: "case/setTitle", title: titleDraft });
-    }
-  }
-
-  function onTitleKey(e: KeyboardEvent) {
-    if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
-    if (e.key === "Escape") {
-      editingTitle = false;
-      titleDraft = $snapshot?.state.case.title ?? "";
-      (e.currentTarget as HTMLInputElement).blur();
-    }
-  }
 
   function onKey(e: KeyboardEvent) {
     // Ctrl+1/2/3 put the map, newspaper or notes in the focus area (again to dismiss).
@@ -96,6 +82,13 @@
       }
       if (k === "h") {
         toggleHideAll();
+        return;
+      }
+      // 1–9 switch the overlay between saved layouts (0 fits the map).
+      if (/^[1-9]$/.test(e.key) && $snapshot) {
+        const ids = Object.keys($snapshot.state.layouts);
+        const id = ids[Number(e.key) - 1];
+        if (id && id !== $snapshot.state.overlay.layoutId) dispatch({ type: "overlay/setLayout", layoutId: id });
         return;
       }
     }
@@ -166,29 +159,12 @@
             <CastTab {conn} {play} onAdd={() => (charForm = { id: null })} onEdit={(id) => (charForm = { id })} />
           {:else if play.tab === "keys"}
             <KeysTab {conn} />
+          {:else if play.tab === "paper"}
+            <PaperTab {conn} onToggle={() => toggleFocus("newspaper")} />
           {:else if play.tab === "case"}
-            <div class="case">
-              <section>
-                <label for="title">Case title</label>
-                <input
-                  id="title"
-                  maxlength="200"
-                  placeholder="Case 3 · The Tin Soldier"
-                  bind:value={titleDraft}
-                  onfocus={() => (editingTitle = true)}
-                  onblur={commitTitle}
-                  onkeydown={onTitleKey}
-                  disabled={!$snapshot}
-                />
-              </section>
-              <section class="rev">
-                <div>
-                  <span class="label">Revision</span>
-                  <span class="value">{$snapshot?.rev ?? "–"}</span>
-                </div>
-                <button onclick={() => dispatch({ type: "debug/ping" })} disabled={$status !== "open"}>Bump rev</button>
-              </section>
-            </div>
+            <CaseTab {conn} />
+          {:else if play.tab === "layout"}
+            <LayoutTab {conn} active={mode === "play" && play.tab === "layout"} />
           {:else}
             <OverlayTab {conn} />
           {/if}
@@ -283,7 +259,8 @@
   .modes,
   .tabs {
     display: flex;
-    gap: 4px;
+    flex-wrap: wrap;
+    gap: 0 2px;
     border-bottom: 1px solid #d8c9aa;
   }
   .modes button,
@@ -374,40 +351,6 @@
       min-height: 0;
       overflow: auto;
     }
-  }
-  .case {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-  label,
-  .label {
-    display: block;
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: #6b5a44;
-    margin-bottom: 4px;
-  }
-  input {
-    width: 100%;
-    box-sizing: border-box;
-    padding: 8px;
-    font: inherit;
-    font-size: 16px;
-    border: 1px solid #b9a787;
-    border-radius: 4px;
-    background: #fffaf0;
-  }
-  .rev {
-    display: flex;
-    align-items: end;
-    justify-content: space-between;
-  }
-  .value {
-    font-size: 40px;
-    font-variant-numeric: tabular-nums;
-    font-family: Georgia, serif;
   }
   .error {
     margin: 0;

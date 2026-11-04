@@ -1,6 +1,7 @@
-﻿<script lang="ts">
+<script lang="ts">
   import { tick, untrack } from "svelte";
   import type { TrailStep } from "../../shared/schema";
+  import { currentInvestigator } from "../../shared/game";
   import { searchCharacters, suggestKind } from "../lib/cast";
   import type { Connection } from "../lib/socket";
   import { KIND_LABELS, newStepId, searchZones, type ZoneMatch } from "../lib/trail";
@@ -71,8 +72,26 @@
       zone: m.zone,
       who: m.character.name,
     }));
-    return [...people, ...searchZones(query, caseMaps)];
+    // Informants by name: "scot" finds Scotland Yard's address.
+    const q = query.trim().toLowerCase();
+    const helpers =
+      q.length < 2
+        ? []
+        : informants
+            .filter((i) => i.name.toLowerCase().includes(q))
+            .map((i) => ({ mapId: i.mapId, mapName: i.mapName, zone: i.zone, who: i.name }));
+    return [...people, ...helpers, ...searchZones(query, caseMaps)];
   });
+
+  // Informant shortcuts for the case's maps: one tap selects their address.
+  const informants = $derived(
+    caseMaps.flatMap((m) =>
+      m.informants.flatMap((i) => {
+        const zone = m.zones.find((z) => z.id === i.zoneId);
+        return zone ? [{ ...i, mapId: m.id, mapName: m.name || m.id, zone }] : [];
+      }),
+    ),
+  );
   $effect(() => {
     query;
     hi = 0;
@@ -103,6 +122,8 @@
 
   // --- Recording -------------------------------------------------------------
   let kind = $state<TrailStep["kind"]>("lead");
+  /** Timesheet mode: the lead's stated duration in minutes. */
+  let duration = $state<number | null>(null);
   let offMap = $state<string | null>(null); // label being typed, or null when closed
   let flash = $state<string | null>(null);
   let undoUntil = $state(0);
@@ -175,7 +196,10 @@
     } else {
       const index = t.kind === "insert" ? t.index : undefined;
       stepId = newStepId();
-      dispatch({ type: "trail/add", step: { id: stepId, ...place, kind, at }, index });
+      // Whose turn it was (the book passes left on each new step).
+      const by = index === undefined ? (currentInvestigator(app?.case.players ?? [], trail)?.id ?? null) : null;
+      const time = app?.case.timesheet ? duration : null;
+      dispatch({ type: "trail/add", step: { id: stepId, ...place, kind, at, by, duration: time }, index });
       n = (index ?? trail.length) + 1;
     }
     if ("zoneId" in place) offerMet(stepId, place);
@@ -185,6 +209,7 @@
     play.resetTarget();
     play.selected = null;
     kind = "lead";
+    duration = null;
     flash = `Step ${n} ✓`;
     clearTimeout(flashTimer);
     flashTimer = setTimeout(() => (flash = null), 1400);
@@ -295,6 +320,19 @@
       {/if}
     </div>
 
+    {#if informants.length}
+      <div class="informants" aria-label="Informants">
+        {#each informants as i (i.mapId + i.id)}
+          <button
+            type="button"
+            class:on={play.mapId === i.mapId && play.selected === i.zone.id}
+            title="{i.zone.label}{caseMaps.length > 1 ? ` · ${i.mapName}` : ''}"
+            onclick={() => play.showZone(i.mapId, i.zone.id)}>{i.name}</button
+          >
+        {/each}
+      </div>
+    {/if}
+
     <div class="map">
       <PlayMap
         bind:this={playMap}
@@ -317,6 +355,18 @@
       <select bind:value={kind} aria-label="Step kind" title="Only leads count toward the total">
         {#each Object.entries(KIND_LABELS) as [k, label]}<option value={k}>{label}</option>{/each}
       </select>
+      {#if app?.case.timesheet && kind !== "deadEnd"}
+        <input
+          class="minutes"
+          type="number"
+          min="0"
+          max="1440"
+          placeholder="min"
+          title="The lead's stated duration in minutes (travel is added automatically)"
+          value={duration ?? ""}
+          oninput={(e) => (duration = e.currentTarget.value === "" ? null : Math.max(0, Math.round(Number(e.currentTarget.value))))}
+        />
+      {/if}
       <button type="button" class="big" class:flash={!!flash} disabled={!canRecord && !flash} onclick={record}>
         {flash ?? buttonLabel}
       </button>
@@ -493,6 +543,25 @@
     background: #2b2118;
     border-color: #2b2118;
     color: #fff;
+  }
+  .informants {
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+  .informants button {
+    flex: none;
+    padding: 3px 9px;
+    font-size: 12px;
+    border-radius: 999px;
+  }
+  .informants button.on {
+    background: #2b2118;
+    color: #fff;
+  }
+  .minutes {
+    width: 64px;
   }
   .suggest {
     margin: 0;
