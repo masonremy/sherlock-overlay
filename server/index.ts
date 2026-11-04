@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { WebSocketServer, WebSocket } from "ws";
 import { DEFAULT_PORT, WS_PATH } from "../shared/constants";
-import { ClientMessage, type ServerMessage } from "../shared/protocol";
+import { ClientMessage, type MirrorView, type ServerMessage } from "../shared/protocol";
 import { AppStore } from "./store";
 import { saveMapImage, UnsupportedImageError } from "./uploads";
 
@@ -13,9 +13,10 @@ const port = Number(process.env.PORT ?? DEFAULT_PORT);
 const caseId = process.env.CASE ?? "default";
 const mapsDir = resolve(root, "maps");
 
-const app = Fastify({ logger: { level: "info" } });
+// Warnings and errors only; per-request lines drown out everything else.
+const app = Fastify({ logger: { level: "warn" } });
 const store = await AppStore.load({ casesDir: resolve(root, "cases"), mapsDir, caseId });
-app.log.info(`case "${caseId}" loaded at rev ${store.state.rev}; ${Object.keys(store.state.maps).length} map(s) in library`);
+console.log(`case "${caseId}" loaded at rev ${store.state.rev}; ${Object.keys(store.state.maps).length} map(s) in library`);
 
 // --- WebSocket sync ---------------------------------------------------------
 
@@ -29,8 +30,11 @@ app.server.on("upgrade", (req, socket, head) => {
 });
 
 function snapshot(): ServerMessage {
-  return { type: "snapshot", rev: store.state.rev, state: store.state, canUndo: store.canUndo, canRedo: store.canRedo };
+  return { type: "snapshot", rev: store.state.rev, state: store.state, history: store.timeline };
 }
+
+/** Latest mirrored panel view; kept so a reconnecting overlay picks it up. */
+let mirror: MirrorView | null = null;
 
 function send(ws: WebSocket, msg: ServerMessage) {
   if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg));
@@ -43,6 +47,7 @@ store.subscribe(() => {
 
 wss.on("connection", (ws) => {
   send(ws, snapshot());
+  if (mirror) send(ws, { type: "mirror", view: mirror });
   ws.on("message", (data) => {
     let parsed;
     try {
@@ -55,7 +60,11 @@ wss.on("connection", (ws) => {
     const msg = parsed.data;
     if (msg.type === "undo") store.undo();
     else if (msg.type === "redo") store.redo();
-    else {
+    else if (msg.type === "jump") store.jump(msg.offset);
+    else if (msg.type === "mirror") {
+      mirror = msg.view;
+      for (const client of wss.clients) if (client !== ws) send(client, { type: "mirror", view: mirror });
+    } else {
       const result = store.dispatch(msg.action);
       if (!result.ok) send(ws, { type: "error", message: result.error });
     }

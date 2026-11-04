@@ -1,5 +1,36 @@
 import { z } from "zod";
-import { ImageFile, ImageSize, MapDef, MapId, Zone, ZonePatch } from "./schema";
+import { ImageFile, ImageSize, MapDef, MapId, MapView, StepKind, Zone, ZonePatch } from "./schema";
+
+const StepId = z.string().regex(/^[A-Za-z0-9_-]{1,40}$/, "Step id: letters, digits, - and _");
+const customLabel = z
+  .string()
+  .trim()
+  .max(80)
+  .nullable()
+  .transform((s) => s || null);
+
+// A recorded step: on a map (mapId + zoneId) or off-map (customLabel).
+const StepInput = z.object({
+  id: StepId,
+  mapId: MapId.nullable().default(null),
+  zoneId: z.string().nullable().default(null),
+  customLabel: customLabel.default(null),
+  kind: StepKind.default("lead"),
+  note: z.string().max(500).default(""),
+  at: z.string().max(40),
+});
+
+const StepPatch = z
+  .object({
+    mapId: MapId.nullable(),
+    zoneId: z.string().nullable(),
+    customLabel,
+    kind: StepKind,
+    note: z.string().max(500),
+    characterIds: z.array(z.string()),
+  })
+  .partial()
+  .strict();
 
 // Every state change is an action. The server validates incoming actions with
 // this schema before handing them to the reducer; checks that depend on the
@@ -28,6 +59,19 @@ export const Action = z.discriminatedUnion("type", [
   z.object({ type: z.literal("zone/add"), mapId: MapId, zone: Zone }),
   z.object({ type: z.literal("zone/update"), mapId: MapId, zoneId: z.string(), patch: ZonePatch }),
   z.object({ type: z.literal("zone/delete"), mapId: MapId, zoneId: z.string() }),
+
+  // Trail. While a draft exists (edit mode), these change the draft instead.
+  z.object({ type: z.literal("trail/add"), step: StepInput, index: z.number().int().min(0).optional() }),
+  z.object({ type: z.literal("trail/update"), stepId: z.string(), patch: StepPatch }),
+  z.object({ type: z.literal("trail/delete"), stepId: z.string() }),
+  z.object({ type: z.literal("trail/move"), stepId: z.string(), toIndex: z.number().int().min(0) }),
+  z.object({ type: z.literal("trail/beginEdit") }),
+  z.object({ type: z.literal("trail/apply") }),
+  z.object({ type: z.literal("trail/discard") }),
+
+  // Overlay
+  z.object({ type: z.literal("overlay/setMapView"), mode: MapView }),
+  z.object({ type: z.literal("overlay/setMap"), mapId: MapId.nullable() }),
 ]);
 
 export type Action = z.infer<typeof Action>;

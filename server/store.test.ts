@@ -107,6 +107,42 @@ describe("AppStore: case state", () => {
     const files = await readdir(join(casesDir, "bad"));
     expect(files.some((f) => f.startsWith("state.corrupt-"))).toBe(true);
   });
+
+  it("keeps rolling backups named by rev, newest N only", async () => {
+    const store = await load("test", { backupIntervalMs: 0, maxBackups: 3 });
+    for (let i = 0; i < 5; i++) {
+      store.dispatch({ type: "debug/ping" });
+      await store.flush();
+    }
+    const backups = (await readdir(join(casesDir, "test"))).filter((f) => /^state\.\d+\.json$/.test(f)).sort();
+    expect(backups).toEqual(["state.3.json", "state.4.json", "state.5.json"]);
+  });
+
+  it("recovers from the newest readable backup when state.json is corrupt", async () => {
+    const a = await load("test", { backupIntervalMs: 0 });
+    a.dispatch({ type: "case/setTitle", title: "Before the crash" });
+    await a.flush();
+    await writeFile(join(casesDir, "test", "state.json"), "{ truncated");
+    await writeFile(join(casesDir, "test", "state.99.json"), "also broken");
+
+    const b = await load("test");
+    expect(b.state.case.title).toBe("Before the crash");
+    expect(b.state.rev).toBe(1);
+  });
+
+  it("jumps through history and reports the timeline", async () => {
+    const store = await load();
+    for (const title of ["A", "B", "C"]) store.dispatch({ type: "case/setTitle", title });
+    store.jump(-2);
+    expect(store.state.case.title).toBe("A");
+    expect(store.timeline.index).toBe(1);
+    expect(store.timeline.entries.map((e) => e.label)).toEqual([
+      "Opened case",
+      'Case title → "A"',
+      'Case title → "B"',
+      'Case title → "C"',
+    ]);
+  });
 });
 
 describe("AppStore: map definitions", () => {

@@ -1,4 +1,5 @@
 ﻿import type { Action } from "./actions";
+import { describeAction } from "./describe";
 import { reduce } from "./reducer";
 import type { AppState } from "./schema";
 
@@ -7,41 +8,67 @@ import type { AppState } from "./schema";
 
 export const HISTORY_LIMIT = 200;
 
+/** A state plus what produced it, for the history drawer. */
+export interface Entry {
+  state: AppState;
+  label: string;
+  at: string;
+}
+
 export interface History {
-  present: AppState;
-  past: AppState[];
-  future: AppState[];
+  present: Entry;
+  past: Entry[];
+  future: Entry[];
 }
 
-export function createHistory(state: AppState): History {
-  return { present: state, past: [], future: [] };
+export interface Timeline {
+  /** Oldest first: past, present, then undone (future) entries. */
+  entries: { label: string; at: string }[];
+  /** Position of the present entry. */
+  index: number;
 }
 
-function withRev(state: AppState, rev: number): AppState {
-  return { ...state, rev };
+export function createHistory(state: AppState, at: string, label = "Opened case"): History {
+  return { present: { state, label, at }, past: [], future: [] };
 }
 
-export function apply(h: History, action: Action): History {
-  const next = withRev(reduce(h.present, action), h.present.rev + 1);
-  return { present: next, past: [...h.past, h.present].slice(-HISTORY_LIMIT), future: [] };
+function withRev(entry: Entry, rev: number): Entry {
+  return { ...entry, state: { ...entry.state, rev } };
+}
+
+export function apply(h: History, action: Action, at: string): History {
+  const prev = h.present.state;
+  const state = { ...reduce(prev, action), rev: prev.rev + 1 };
+  return {
+    present: { state, label: describeAction(action, prev), at },
+    past: [...h.past, h.present].slice(-HISTORY_LIMIT),
+    future: [],
+  };
 }
 
 export function undo(h: History): History {
-  const prev = h.past.at(-1);
-  if (!prev) return h;
-  return {
-    present: withRev(prev, h.present.rev + 1),
-    past: h.past.slice(0, -1),
-    future: [h.present, ...h.future],
-  };
+  return jump(h, -1);
 }
 
 export function redo(h: History): History {
-  const [next, ...rest] = h.future;
-  if (!next) return h;
+  return jump(h, 1);
+}
+
+/** Moves `offset` entries back (negative) or forward as one change. */
+export function jump(h: History, offset: number): History {
+  const all = [...h.past, h.present, ...h.future];
+  const from = h.past.length;
+  const to = Math.min(all.length - 1, Math.max(0, from + offset));
+  if (to === from) return h;
+  // Stored entries keep their original rev; the new present gets a fresh one.
   return {
-    present: withRev(next, h.present.rev + 1),
-    past: [...h.past, h.present].slice(-HISTORY_LIMIT),
-    future: rest,
+    present: withRev(all[to], h.present.state.rev + 1),
+    past: all.slice(0, to),
+    future: all.slice(to + 1),
   };
+}
+
+export function timeline(h: History): Timeline {
+  const entries = [...h.past, h.present, ...h.future].map(({ label, at }) => ({ label, at }));
+  return { entries, index: h.past.length };
 }

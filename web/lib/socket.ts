@@ -1,8 +1,9 @@
 ﻿import { writable, type Readable } from "svelte/store";
 import { WS_PATH } from "../../shared/constants";
-import type { ClientMessage, ServerMessage } from "../../shared/protocol";
+import type { ClientMessage, MirrorView, ServerMessage } from "../../shared/protocol";
 import type { AppState } from "../../shared/schema";
 import type { ActionInput } from "../../shared/actions";
+import type { Timeline } from "../../shared/history";
 
 // One WebSocket to the server, reconnecting with backoff. Both pages are thin
 // clients: they render whatever snapshot arrives last and send actions back.
@@ -12,6 +13,7 @@ export type Status = "connecting" | "open" | "closed";
 export interface Snapshot {
   rev: number;
   state: AppState;
+  history: Timeline;
   canUndo: boolean;
   canRedo: boolean;
 }
@@ -20,15 +22,21 @@ export interface Connection {
   status: Readable<Status>;
   snapshot: Readable<Snapshot | null>;
   lastError: Readable<string | null>;
+  /** The panel's map view, streamed while the overlay is in mirror mode. */
+  mirror: Readable<MirrorView | null>;
   dispatch(action: ActionInput): void;
   undo(): void;
   redo(): void;
+  /** Roll back (negative) or forward through history in one change. */
+  jump(offset: number): void;
+  sendMirror(view: MirrorView): void;
 }
 
 export function connect(): Connection {
   const status = writable<Status>("connecting");
   const snapshot = writable<Snapshot | null>(null);
   const lastError = writable<string | null>(null);
+  const mirror = writable<MirrorView | null>(null);
   let ws: WebSocket | null = null;
   let retryMs = 500;
   let latestRev = -1;
@@ -48,11 +56,22 @@ export function connect(): Connection {
         lastError.set(msg.message);
         return;
       }
+      if (msg.type === "mirror") {
+        mirror.set(msg.view);
+        return;
+      }
       // A restarted server may reload an older rev from disk; accept it after a reconnect.
       if (msg.rev < latestRev) return;
       latestRev = msg.rev;
       lastError.set(null);
-      snapshot.set({ rev: msg.rev, state: msg.state, canUndo: msg.canUndo, canRedo: msg.canRedo });
+      const { entries, index } = msg.history;
+      snapshot.set({
+        rev: msg.rev,
+        state: msg.state,
+        history: msg.history,
+        canUndo: index > 0,
+        canRedo: index < entries.length - 1,
+      });
     };
     ws.onclose = () => {
       status.set("closed");
@@ -72,8 +91,11 @@ export function connect(): Connection {
     status,
     snapshot,
     lastError,
+    mirror,
     dispatch: (action) => send({ type: "action", action }),
     undo: () => send({ type: "undo" }),
     redo: () => send({ type: "redo" }),
+    jump: (offset) => send({ type: "jump", offset }),
+    sendMirror: (view) => send({ type: "mirror", view }),
   };
 }

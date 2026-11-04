@@ -1,7 +1,7 @@
-import { mkdir, readdir, readFile, rename, writeFile } from "node:fs/promises";
+﻿import { mkdir, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { parseAction } from "../shared/actions";
-import { apply, createHistory, redo, undo, type History } from "../shared/history";
+import { apply, createHistory, jump, timeline, type History, type Timeline } from "../shared/history";
 import { ActionError } from "../shared/reducer";
 import { AppState, CaseState, MapDef, MapId, createInitialState } from "../shared/schema";
 
@@ -17,6 +17,9 @@ export interface StoreOptions {
   mapsDir: string;
   caseId: string;
   debounceMs?: number;
+  /** Minimum time between rolling backups (state.<rev>.json). */
+  backupIntervalMs?: number;
+  maxBackups?: number;
 }
 
 export class AppStore {
@@ -26,6 +29,7 @@ export class AppStore {
   private saving: Promise<void> = Promise.resolve();
   /** Map objects as last written (or loaded), to write only what changed. */
   private savedMaps: Record<string, MapDef>;
+  private lastBackupAt = 0;
 
   private constructor(
     private readonly opts: Required<StoreOptions>,
@@ -33,12 +37,12 @@ export class AppStore {
     /** Map ids whose files exist but couldn't be read; set aside before any write. */
     private readonly unreadableMaps: Set<string>,
   ) {
-    this.history = createHistory(initial);
+    this.history = createHistory(initial, new Date().toISOString());
     this.savedMaps = initial.maps;
   }
 
   static async load(options: StoreOptions): Promise<AppStore> {
-    const opts = { debounceMs: 500, ...options };
+    const opts = { debounceMs: 500, backupIntervalMs: 60_000, maxBackups: 20, ...options };
     const caseDir = join(opts.casesDir, opts.caseId);
     await mkdir(join(caseDir, "assets"), { recursive: true });
     await mkdir(opts.mapsDir, { recursive: true });
@@ -52,7 +56,11 @@ export class AppStore {
   }
 
   get state(): AppState {
-    return this.history.present;
+    return this.history.present.state;
+  }
+
+  get timeline(): Timeline {
+    return timeline(this.history);
   }
 
   get canUndo(): boolean {
@@ -72,7 +80,7 @@ export class AppStore {
     const parsed = parseAction(raw);
     if (!parsed.ok) return parsed;
     try {
-      this.commit(apply(this.history, parsed.action));
+      this.commit(apply(this.history, parsed.action, new Date().toISOString()));
     } catch (err) {
       if (err instanceof ActionError) return { ok: false, error: err.message };
       throw err;
@@ -81,11 +89,16 @@ export class AppStore {
   }
 
   undo(): void {
-    this.commit(undo(this.history));
+    this.jump(-1);
   }
 
   redo(): void {
-    this.commit(redo(this.history));
+    this.jump(1);
+  }
+
+  /** Rolls back (negative) or forward through history as one change. */
+  jump(offset: number): void {
+    this.commit(jump(this.history, offset));
   }
 
   /** Writes any pending change now. */
@@ -102,7 +115,7 @@ export class AppStore {
     if (next === this.history) return;
     this.history = next;
     this.scheduleSave();
-    for (const fn of this.listeners) fn(next.present);
+    for (const fn of this.listeners) fn(next.present.state);
   }
 
   private scheduleSave(): void {
@@ -122,7 +135,13 @@ export class AppStore {
 
   private async save(snapshot: AppState): Promise<void> {
     const { maps, ...caseState } = snapshot;
-    await writeJson(join(this.opts.casesDir, this.opts.caseId, "state.json"), caseState);
+    const caseDir = join(this.opts.casesDir, this.opts.caseId);
+    await writeJson(join(caseDir, "state.json"), caseState);
+    if (Date.now() - this.lastBackupAt >= this.opts.backupIntervalMs) {
+      this.lastBackupAt = Date.now();
+      await writeJson(join(caseDir, `state.${caseState.rev}.json`), caseState);
+      await pruneBackups(caseDir, this.opts.maxBackups);
+    }
 
     const { mapsDir } = this.opts;
     for (const [id, map] of Object.entries(maps)) {
@@ -152,9 +171,32 @@ async function readCaseState(dir: string): Promise<CaseState> {
     // Keep the unreadable file for recovery rather than overwriting it.
     const aside = join(dir, `state.corrupt-${Date.now()}.json`);
     await rename(file, aside);
-    console.error(`[store] ${file} could not be loaded; moved to ${aside}. Starting fresh.`, err);
-    return createInitialState();
+    console.error(`[store] ${file} could not be loaded; moved to ${aside}.`, err);
   }
+  for (const backup of await listBackups(dir)) {
+    try {
+      const state = CaseState.parse(JSON.parse(await readFile(join(dir, backup.file), "utf8")));
+      console.error(`[store] recovered from ${backup.file}`);
+      return state;
+    } catch {
+      // try the next older one
+    }
+  }
+  console.error("[store] no readable backup; starting fresh");
+  return createInitialState();
+}
+
+/** Rolling backups, newest first. */
+async function listBackups(dir: string): Promise<{ file: string; rev: number }[]> {
+  return (await readdir(dir))
+    .map((file) => ({ file, m: /^state\.(\d+)\.json$/.exec(file) }))
+    .filter((b) => b.m)
+    .map((b) => ({ file: b.file, rev: Number(b.m![1]) }))
+    .sort((a, b) => b.rev - a.rev);
+}
+
+async function pruneBackups(dir: string, keep: number): Promise<void> {
+  for (const old of (await listBackups(dir)).slice(keep)) await rm(join(dir, old.file), { force: true });
 }
 
 async function readMaps(mapsDir: string): Promise<{ maps: Record<string, MapDef>; unreadable: Set<string> }> {

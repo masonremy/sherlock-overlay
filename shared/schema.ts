@@ -89,12 +89,16 @@ export const OverlayState = z.object({
   mapView: MapView.default("auto-frame"),
   notesScroll: z.number().default(0),
   notesAutoScroll: z.boolean().default(true),
+  /** Map shown in the focus area; null follows the trail's latest map. */
+  mapId: nullableString,
 });
 
 export const CaseState = z.object({
   rev: z.number().int().nonnegative().default(0),
   case: CaseInfo.prefault({}),
   trail: z.array(TrailStep).default([]),
+  /** Staged trail edits (edit mode); viewers keep seeing `trail` until applied. */
+  trailDraft: z.array(TrailStep).nullable().default(null),
   characters: z.array(Character).default([]),
   keys: z.array(LetterKey).default([]),
   notes: z.array(Note).default([]),
