@@ -1,8 +1,8 @@
-import { writable, type Readable } from "svelte/store";
+﻿import { writable, type Readable } from "svelte/store";
 import { WS_PATH } from "../../shared/constants";
 import type { ClientMessage, ServerMessage } from "../../shared/protocol";
-import type { CaseState } from "../../shared/schema";
-import type { Action } from "../../shared/actions";
+import type { AppState } from "../../shared/schema";
+import type { ActionInput } from "../../shared/actions";
 
 // One WebSocket to the server, reconnecting with backoff. Both pages are thin
 // clients: they render whatever snapshot arrives last and send actions back.
@@ -11,7 +11,7 @@ export type Status = "connecting" | "open" | "closed";
 
 export interface Snapshot {
   rev: number;
-  state: CaseState;
+  state: AppState;
   canUndo: boolean;
   canRedo: boolean;
 }
@@ -20,7 +20,7 @@ export interface Connection {
   status: Readable<Status>;
   snapshot: Readable<Snapshot | null>;
   lastError: Readable<string | null>;
-  dispatch(action: Action): void;
+  dispatch(action: ActionInput): void;
   undo(): void;
   redo(): void;
 }

@@ -1,5 +1,5 @@
-import { z } from "zod";
-import type { CaseState } from "./schema";
+﻿import { z } from "zod";
+import type { AppState } from "./schema";
 
 // Messages over the single WebSocket at /ws.
 
@@ -12,5 +12,5 @@ export const ClientMessage = z.discriminatedUnion("type", [
 export type ClientMessage = z.infer<typeof ClientMessage>;
 
 export type ServerMessage =
-  | { type: "snapshot"; rev: number; state: CaseState; canUndo: boolean; canRedo: boolean }
+  | { type: "snapshot"; rev: number; state: AppState; canUndo: boolean; canRedo: boolean }
   | { type: "error"; message: string };

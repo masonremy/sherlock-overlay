@@ -104,11 +104,73 @@ export const CaseState = z.object({
 });
 
 export type CaseState = z.infer<typeof CaseState>;
+
+// --- Map definitions (maps/<id>.json), shared by every case ---------------
+
+// Map ids become file names, so: lowercase (Windows is case-insensitive), no paths.
+export const MapId = z.string().regex(/^[a-z0-9][a-z0-9_-]{0,63}$/, "Map id: lowercase letters, digits, - and _");
+export const ImageFile = z
+  .string()
+  .regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}\.(png|jpe?g|webp)$/i, "Image must be a .png, .jpg or .webp file name");
+const ZoneId = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/, "Zone id: letters, digits, - and _");
+const unit = z.number().min(0).max(1);
+export const NormPoint = z.tuple([unit, unit]);
+
+export const ZoneFields = z.object({
+  id: ZoneId,
+  label: z.string().trim().min(1, "Label is required").max(60),
+  district: z.string().max(30).default(""),
+  shape: z.enum(["rect", "polygon"]),
+  points: z.array(NormPoint).min(3, "A zone needs at least 3 points").max(500),
+  anchor: NormPoint,
+  visitable: z.boolean().default(true),
+});
+
+export const Zone = ZoneFields.superRefine((zone, ctx) => {
+  if (zone.shape === "rect" && zone.points.length !== 4) {
+    ctx.addIssue({ code: "custom", message: "A rectangle has exactly 4 points", path: ["points"] });
+  }
+});
+
+export const ZonePatch = ZoneFields.omit({ id: true }).partial().strict();
+
+export const ImageSize = z.tuple([z.number().int().positive(), z.number().int().positive()]);
+
+// Loose so fields added by later versions (informants, adjacency) survive a load/save.
+export const MapDef = z
+  .looseObject({
+    id: MapId,
+    name: z.string().max(80).default(""),
+    image: ImageFile,
+    imageSize: ImageSize,
+    zones: z.array(Zone).default([]),
+  })
+  .superRefine((map, ctx) => {
+    const seen = new Set<string>();
+    for (const zone of map.zones) {
+      if (seen.has(zone.id)) ctx.addIssue({ code: "custom", message: `Duplicate zone id "${zone.id}"`, path: ["zones"] });
+      seen.add(zone.id);
+    }
+  });
+
+export type Zone = z.infer<typeof Zone>;
+export type ZonePatch = z.infer<typeof ZonePatch>;
+export type MapDef = z.infer<typeof MapDef>;
+
+// --- Server state: the case plus the map library -------------------------
+
+// Maps travel with the case in every snapshot (and share its undo history), but
+// are saved to maps/<id>.json rather than into the case's state.json.
+export const AppState = CaseState.extend({
+  maps: z.record(MapId, MapDef).default({}),
+});
+
+export type AppState = z.infer<typeof AppState>;
 export type TrailStep = z.infer<typeof TrailStep>;
 export type Character = z.infer<typeof Character>;
 export type LetterKey = z.infer<typeof LetterKey>;
 export type Note = z.infer<typeof Note>;
 
-export function createInitialState(startedAt: string = new Date().toISOString()): CaseState {
-  return CaseState.parse({ case: { startedAt } });
+export function createInitialState(startedAt: string = new Date().toISOString()): AppState {
+  return AppState.parse({ case: { startedAt } });
 }

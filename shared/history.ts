@@ -1,6 +1,6 @@
-import type { Action } from "./actions";
+﻿import type { Action } from "./actions";
 import { reduce } from "./reducer";
-import type { CaseState } from "./schema";
+import type { AppState } from "./schema";
 
 // Undo/redo over whole snapshots. `rev` only ever increases, including on undo
 // and redo, so clients can always tell a newer snapshot from an older one.
@@ -8,16 +8,16 @@ import type { CaseState } from "./schema";
 export const HISTORY_LIMIT = 200;
 
 export interface History {
-  present: CaseState;
-  past: CaseState[];
-  future: CaseState[];
+  present: AppState;
+  past: AppState[];
+  future: AppState[];
 }
 
-export function createHistory(state: CaseState): History {
+export function createHistory(state: AppState): History {
   return { present: state, past: [], future: [] };
 }
 
-function withRev(state: CaseState, rev: number): CaseState {
+function withRev(state: AppState, rev: number): AppState {
   return { ...state, rev };
 }
 
