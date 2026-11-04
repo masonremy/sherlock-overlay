@@ -37,16 +37,34 @@ export const TrailStep = z.object({
   at: z.string(),
 });
 
+// Portraits live in portraits/ as p-<hash>.<ext>; the name is all a character stores.
+export const PortraitFile = z.string().regex(/^p-[0-9a-f]{16}\.(png|jpg|webp)$/, "Not a portrait file name");
+
+/** A silhouette built from parts, used whenever there's no uploaded portrait. */
+export const Cameo = z.object({
+  head: z.number().int().min(0).max(3),
+  top: z.enum(["bare", "tophat", "bowler", "bonnet", "helmet", "bun"]),
+  face: z.enum(["none", "moustache", "beard"]),
+});
+
 export const Character = z.object({
   id,
   name: z.string(),
   role: z.string().default(""),
-  portrait: nullableString,
+  portrait: PortraitFile.nullable().default(null),
+  cameo: Cameo.nullable().default(null),
   status: CharacterStatus.default("witness"),
   address: PlaceRef.nullable().default(null),
   notes: z.string().default(""),
   hidden: z.boolean().default(false),
 });
+
+/** A letter (or short code) as the game prints it: "A", "B", "12". */
+export const Letter = z
+  .string()
+  .trim()
+  .toUpperCase()
+  .regex(/^[A-Z0-9]{1,3}$/, "A key is 1–3 letters or digits");
 
 export const LetterKey = z.object({
   letter: z.string().min(1),
@@ -161,17 +179,33 @@ export type Zone = z.infer<typeof Zone>;
 export type ZonePatch = z.infer<typeof ZonePatch>;
 export type MapDef = z.infer<typeof MapDef>;
 
-// --- Server state: the case plus the map library -------------------------
+// --- Portrait library (portraits/library.json), shared by every case ------
 
-// Maps travel with the case in every snapshot (and share its undo history), but
-// are saved to maps/<id>.json rather than into the case's state.json.
+export const PortraitId = z.string().regex(/^[A-Za-z0-9_-]{1,40}$/, "Portrait id: letters, digits, - and _");
+
+export const LibraryPortrait = z.object({
+  id: PortraitId,
+  file: PortraitFile,
+  /** Loose descriptions for picking: "older man", "maid", "constable". */
+  tags: z.array(z.string().trim().min(1).max(30)).max(12).default([]),
+});
+
+export type LibraryPortrait = z.infer<typeof LibraryPortrait>;
+
+// --- Server state: the case plus the global libraries ---------------------
+
+// Maps and portraits travel with the case in every snapshot (and share its
+// undo history), but are saved to maps/ and portraits/ rather than into the
+// case's state.json.
 export const AppState = CaseState.extend({
   maps: z.record(MapId, MapDef).default({}),
+  portraits: z.record(PortraitId, LibraryPortrait).default({}),
 });
 
 export type AppState = z.infer<typeof AppState>;
 export type TrailStep = z.infer<typeof TrailStep>;
 export type Character = z.infer<typeof Character>;
+export type Cameo = z.infer<typeof Cameo>;
 export type LetterKey = z.infer<typeof LetterKey>;
 export type Note = z.infer<typeof Note>;
 

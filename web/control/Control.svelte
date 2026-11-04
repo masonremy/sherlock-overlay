@@ -1,6 +1,10 @@
-<script lang="ts">
+﻿<script lang="ts">
   import { connect } from "../lib/socket";
+  import { stepPlace } from "../lib/trail";
+  import CastTab from "./CastTab.svelte";
+  import CharacterForm from "./CharacterForm.svelte";
   import HistoryDrawer from "./HistoryDrawer.svelte";
+  import KeysTab from "./KeysTab.svelte";
   import MapPanel from "./MapPanel.svelte";
   import OverlayTab from "./OverlayTab.svelte";
   import { PlayState } from "./play.svelte";
@@ -13,10 +17,20 @@
 
   // Two modes: Play (record the investigation) and Zones (build map definitions).
   type Mode = "play" | "zones";
-  type Tab = "trail" | "case" | "overlay";
+  const TABS = ["trail", "cast", "keys", "case", "overlay"] as const;
+  type Tab = (typeof TABS)[number];
   const initial = location.hash.slice(1);
   let mode = $state<Mode>(initial === "maps" || initial === "zones" ? "zones" : "play");
-  let tab = $state<Tab>((["trail", "case", "overlay"] as const).find((t) => t === initial) ?? "trail");
+  let tab = $state<Tab>(TABS.find((t) => t === initial) ?? "trail");
+
+  // Character form: null (closed), a new character, or an existing one.
+  let charForm = $state<{ id: string | null } | null>(null);
+  const liveTrail = $derived($snapshot ? ($snapshot.state.trailDraft ?? $snapshot.state.trail) : []);
+  const latestStep = $derived.by(() => {
+    const step = liveTrail.at(-1);
+    return step && $snapshot ? { id: step.id, n: liveTrail.length, place: stepPlace(step, $snapshot.state.maps) } : null;
+  });
+  const selectedPlace = $derived(play.mapId && play.selected ? { mapId: play.mapId, zoneId: play.selected } : null);
   let showHistory = $state(false);
   $effect(() => {
     history.replaceState(null, "", `#${mode === "zones" ? "zones" : tab}`);
@@ -46,6 +60,20 @@
   }
 
   function onKey(e: KeyboardEvent) {
+    // Alt+letter toggles that letter key (by physical key, so layouts with Alt symbols still work).
+    if (e.altKey && !e.ctrlKey && !e.metaKey && $snapshot && mode === "play") {
+      const letter = /^Key([A-Z])$/.exec(e.code)?.[1] ?? /^Digit(\d)$/.exec(e.code)?.[1];
+      const key = letter && $snapshot.state.keys.find((k) => k.letter === letter);
+      if (key) {
+        e.preventDefault();
+        dispatch({
+          type: "key/update",
+          letter: key.letter,
+          patch: key.unlocked ? { unlocked: false } : { unlocked: true, unlockedAtStep: latestStep?.id ?? null },
+        });
+        return;
+      }
+    }
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
       // Let text fields undo their own typing; checkboxes and buttons don't have any.
       const textField = "textarea, [contenteditable], input:not([type=checkbox], [type=radio], [type=button], [type=file])";
@@ -68,17 +96,29 @@
   {#if mode === "play"}
     <div class="play">
       <section class="mapcol">
-        <MapPanel {conn} {play} active={mode === "play"} onSetupMaps={() => (mode = "zones")} />
+        <MapPanel
+          {conn}
+          {play}
+          active={mode === "play" && !charForm}
+          onSetupMaps={() => (mode = "zones")}
+          onAddCharacter={() => (charForm = { id: null })}
+        />
       </section>
       <section class="tabcol">
         <nav class="tabs">
           <button type="button" class:on={tab === "trail"} onclick={() => (tab = "trail")}>Trail</button>
+          <button type="button" class:on={tab === "cast"} onclick={() => (tab = "cast")}>Cast</button>
+          <button type="button" class:on={tab === "keys"} onclick={() => (tab = "keys")}>Keys</button>
           <button type="button" class:on={tab === "case"} onclick={() => (tab = "case")}>Case</button>
           <button type="button" class:on={tab === "overlay"} onclick={() => (tab = "overlay")}>Overlay</button>
         </nav>
         <div class="tabbody">
           {#if tab === "trail"}
             <TrailTab {conn} {play} />
+          {:else if tab === "cast"}
+            <CastTab {conn} onAdd={() => (charForm = { id: null })} onEdit={(id) => (charForm = { id })} />
+          {:else if tab === "keys"}
+            <KeysTab {conn} />
           {:else if tab === "case"}
             <div class="case">
               <section>
@@ -131,6 +171,16 @@
 
 {#if showHistory}
   <HistoryDrawer {conn} onClose={() => (showHistory = false)} />
+{/if}
+
+{#if charForm}
+  <CharacterForm
+    {conn}
+    characterId={charForm.id}
+    linkStep={charForm.id ? null : latestStep}
+    {selectedPlace}
+    onClose={() => (charForm = null)}
+  />
 {/if}
 
 <style>
@@ -223,7 +273,7 @@
       min-width: 0;
     }
     .tabcol {
-      flex: 0 0 380px;
+      flex: 0 0 400px;
       min-height: 0;
     }
     .tabbody {

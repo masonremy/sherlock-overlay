@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+﻿import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { mkdtemp, readdir, readFile, rm, writeFile, mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -7,11 +7,13 @@ import { AppStore, type StoreOptions } from "./store";
 let root: string;
 let casesDir: string;
 let mapsDir: string;
+let portraitsDir: string;
 
 beforeEach(async () => {
   root = await mkdtemp(join(tmpdir(), "sherlock-store-"));
   casesDir = join(root, "cases");
   mapsDir = join(root, "maps");
+  portraitsDir = join(root, "portraits");
 });
 
 afterEach(async () => {
@@ -19,7 +21,7 @@ afterEach(async () => {
 });
 
 const load = (caseId = "test", opts: Partial<StoreOptions> = {}) =>
-  AppStore.load({ casesDir, mapsDir, caseId, debounceMs: 10, ...opts });
+  AppStore.load({ casesDir, mapsDir, portraitsDir, caseId, debounceMs: 10, ...opts });
 
 const london = { id: "london", name: "London", image: "img-abc.png", imageSize: [4000, 2800] };
 const zone = {
@@ -205,5 +207,38 @@ describe("AppStore: map definitions", () => {
     const store = await load();
     expect(Object.keys(store.state.maps)).toEqual(["whitechapel"]);
     expect(store.state.maps.whitechapel.id).toBe("whitechapel");
+  });
+});
+
+describe("AppStore: portrait library", () => {
+  const portrait = { id: "p1", file: "p-0123456789abcdef.webp", tags: ["maid"] };
+
+  it("saves the library to portraits/library.json and shares it across cases", async () => {
+    const a = await load();
+    a.dispatch({ type: "portrait/add", portrait });
+    await a.flush();
+    const saved = JSON.parse(await readFile(join(portraitsDir, "library.json"), "utf8"));
+    expect(saved).toEqual({ p1: portrait });
+
+    const b = await load("another-case");
+    expect(b.state.portraits).toEqual({ p1: portrait });
+  });
+
+  it("does not write the library when it hasn't changed", async () => {
+    const store = await load();
+    store.dispatch({ type: "debug/ping" });
+    await store.flush();
+    await expect(readFile(join(portraitsDir, "library.json"), "utf8")).rejects.toThrow();
+  });
+
+  it("sets an unreadable library aside instead of overwriting it", async () => {
+    await mkdir(portraitsDir, { recursive: true });
+    await writeFile(join(portraitsDir, "library.json"), "{ broken");
+    const store = await load();
+    expect(store.state.portraits).toEqual({});
+    store.dispatch({ type: "portrait/add", portrait });
+    await store.flush();
+    const files = await readdir(portraitsDir);
+    expect(files.some((f) => /^library\.broken-\d+\.json$/.test(f))).toBe(true);
   });
 });

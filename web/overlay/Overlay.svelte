@@ -1,13 +1,18 @@
 ﻿<script lang="ts">
+  import { untrack } from "svelte";
   import { fade } from "svelte/transition";
   import { DEFAULT_LAYOUT, type LayoutRect } from "../../shared/layout";
+  import { castOrder, facesByZone } from "../lib/cast";
   import { connect } from "../lib/socket";
   import { isNumbered, leadCount } from "../lib/trail";
+  import CastRail from "./CastRail.svelte";
+  import Intro from "./Intro.svelte";
+  import KeyGrid from "./KeyGrid.svelte";
   import MapFocus from "./MapFocus.svelte";
 
   // Read-only: the overlay never sends actions. It shows the committed trail,
   // never the panel's staged edits.
-  const { snapshot, mirror } = connect();
+  const { snapshot, mirror, cue } = connect();
   const checker = new URLSearchParams(location.search).get("bg") === "checker";
   const layout = DEFAULT_LAYOUT;
 
@@ -37,6 +42,73 @@
   );
 
   const box = (r: LayoutRect) => `left:${r.x}px;top:${r.y}px;width:${r.w}px;height:${r.h}px;z-index:${r.z}`;
+
+  const cast = $derived(app ? castOrder(app.characters, trail) : []);
+  const faces = $derived(app && map ? facesByZone(trail, map.id, app.characters) : {});
+
+  // Animations that replay state (key flips) only run after the first snapshot.
+  let settled = $state(false);
+  $effect(() => {
+    if (app && !settled) setTimeout(() => (settled = true), 0);
+  });
+
+  // --- Introductions: newly visible characters play one at a time ------------
+  const INTRO_MS = 2600;
+  let known: Set<string> | null = null;
+  let queue: string[] = [];
+  let introId = $state<string | null>(null);
+  let introTimer: ReturnType<typeof setTimeout> | undefined;
+  const introChar = $derived(app?.characters.find((c) => c.id === introId && !c.hidden) ?? null);
+
+  function playNext() {
+    clearTimeout(introTimer);
+    // Skip anyone hidden or deleted while they waited their turn.
+    const showable = (id: string) => app?.characters.some((c) => c.id === id && !c.hidden);
+    do introId = queue.shift() ?? null;
+    while (introId && !showable(introId));
+    if (introId) introTimer = setTimeout(playNext, INTRO_MS);
+  }
+  function enqueue(id: string) {
+    if (id === introId || queue.includes(id)) return;
+    queue.push(id);
+    if (!introId) playNext();
+  }
+
+  // Both effects untrack the queue: they must re-run on new characters or a new
+  // cue only, never because an intro started or ended.
+  $effect(() => {
+    if (!app) return;
+    const visible = app.characters.filter((c) => !c.hidden).map((c) => c.id);
+    untrack(() => {
+      if (known === null) {
+        known = new Set(visible); // already on stage when the overlay loaded
+        return;
+      }
+      for (const id of visible) {
+        if (!known.has(id)) {
+          known.add(id);
+          enqueue(id);
+        }
+      }
+      // Hidden or deleted mid-introduction: move straight on.
+      if (introId && !visible.includes(introId)) playNext();
+    });
+  });
+
+  $effect(() => {
+    const c = $cue?.cue;
+    if (!c) return;
+    untrack(() => {
+      if (c.kind === "intro") enqueue(c.characterId);
+      else {
+        queue = [];
+        playNext();
+      }
+    });
+  });
+
+  // The rail holds back whoever is being introduced, then welcomes them in.
+  const railCast = $derived(cast.filter((c) => c.id !== introId && !queue.includes(c.id)));
 </script>
 
 <div class="stage" class:checker>
@@ -59,7 +131,7 @@
         {/if}
         {#key map.id}
           <div in:fade={{ duration: 400 }}>
-            <MapFocus {map} {trail} mode={app.overlay.mapView} mirror={$mirror} width={mapW} height={mapH} />
+            <MapFocus {map} {trail} {faces} mode={app.overlay.mapView} mirror={$mirror} width={mapW} height={mapH} />
           </div>
         {/key}
         {#if elsewhere.length}
@@ -74,6 +146,26 @@
           </div>
         {/if}
       </section>
+    {/if}
+
+    {#if cast.length}
+      <section class="panel" style={box(layout.cast)}>
+        <CastRail characters={railCast} maps={app.maps} width={layout.cast.w} height={layout.cast.h} />
+      </section>
+    {/if}
+
+    {#if app.keys.length}
+      <section class="panel" style={box(layout.keys)}>
+        <KeyGrid keys={app.keys} {trail} width={layout.keys.w} height={layout.keys.h} animate={settled} />
+      </section>
+    {/if}
+
+    {#if introChar}
+      {#key introChar.id}
+        <div class="intro-slot" style={box({ ...layout.focus, z: 10 })}>
+          <Intro character={introChar} />
+        </div>
+      {/key}
     {/if}
   {/if}
 </div>
@@ -115,6 +207,12 @@
   .leads strong {
     font-size: 30px;
     margin-left: 4px;
+  }
+  .intro-slot {
+    position: absolute;
+    display: grid;
+    place-items: center;
+    pointer-events: none;
   }
   .focus {
     display: flex;

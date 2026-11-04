@@ -5,17 +5,21 @@ import { WebSocketServer, WebSocket } from "ws";
 import { DEFAULT_PORT, WS_PATH } from "../shared/constants";
 import { ClientMessage, type MirrorView, type ServerMessage } from "../shared/protocol";
 import { AppStore } from "./store";
-import { saveMapImage, UnsupportedImageError } from "./uploads";
+import { saveImage, UnsupportedImageError } from "./uploads";
 
 const root = resolve(import.meta.dirname, "..");
 const isProd = process.env.NODE_ENV === "production";
 const port = Number(process.env.PORT ?? DEFAULT_PORT);
 const caseId = process.env.CASE ?? "default";
-const mapsDir = resolve(root, "maps");
+// User data (cases/, maps/, portraits/) lives in the repo by default; DATA_DIR
+// points it elsewhere, e.g. so test runs never touch the streamer's files.
+const dataDir = resolve(process.env.DATA_DIR ?? root);
+const mapsDir = resolve(dataDir, "maps");
+const portraitsDir = resolve(dataDir, "portraits");
 
 // Warnings and errors only; per-request lines drown out everything else.
 const app = Fastify({ logger: { level: "warn" } });
-const store = await AppStore.load({ casesDir: resolve(root, "cases"), mapsDir, caseId });
+const store = await AppStore.load({ casesDir: resolve(dataDir, "cases"), mapsDir, portraitsDir, caseId });
 console.log(`case "${caseId}" loaded at rev ${store.state.rev}; ${Object.keys(store.state.maps).length} map(s) in library`);
 
 // --- WebSocket sync ---------------------------------------------------------
@@ -64,6 +68,8 @@ wss.on("connection", (ws) => {
     else if (msg.type === "mirror") {
       mirror = msg.view;
       for (const client of wss.clients) if (client !== ws) send(client, { type: "mirror", view: mirror });
+    } else if (msg.type === "cue") {
+      for (const client of wss.clients) if (client !== ws) send(client, { type: "cue", cue: msg.cue });
     } else {
       const result = store.dispatch(msg.action);
       if (!result.ok) send(ws, { type: "error", message: result.error });
@@ -71,39 +77,46 @@ wss.on("connection", (ws) => {
   });
 });
 
-// --- Map images ---------------------------------------------------------------
+// --- Images (maps, portraits) -------------------------------------------------
 
-// Upload is plain HTTP; the client then sends map/create or map/setImage with
-// the returned file name, so the state change itself is still an action.
+// Upload is plain HTTP; the client then sends an action (map/create,
+// character/update, portrait/add…) with the returned file name, so the state
+// change itself is still an action.
 app.addContentTypeParser(
   ["image/png", "image/jpeg", "image/webp", "application/octet-stream"],
   { parseAs: "buffer", bodyLimit: 200 * 1024 * 1024 },
   (_req, body, done) => done(null, body),
 );
 
-app.post("/api/maps/images", async (req, reply) => {
-  if (!Buffer.isBuffer(req.body)) return reply.code(415).send({ error: "Send the image bytes as the request body" });
-  try {
-    return { file: await saveMapImage(mapsDir, req.body) };
-  } catch (err) {
-    if (err instanceof UnsupportedImageError) return reply.code(415).send({ error: err.message });
-    throw err;
-  }
-});
-
 const fastifyStatic = (await import("@fastify/static")).default;
-await app.register(fastifyStatic, {
-  root: mapsDir,
-  prefix: "/maps/",
-  decorateReply: false,
-  index: false,
-  allowedPath: (path) => /\.(png|jpe?g|webp)$/i.test(path),
-  setHeaders: (res, path) => {
-    // Uploaded images are content-addressed and never change; hand-placed ones might.
-    const immutable = /[\\/]img-[0-9a-f]{16}\.\w+$/.test(path);
-    res.header("Cache-Control", immutable ? "public, max-age=31536000, immutable" : "no-cache");
-  },
-});
+
+for (const { route, dir, prefix } of [
+  { route: "maps", dir: mapsDir, prefix: "img" },
+  { route: "portraits", dir: portraitsDir, prefix: "p" },
+]) {
+  app.post(`/api/${route}/images`, async (req, reply) => {
+    if (!Buffer.isBuffer(req.body)) return reply.code(415).send({ error: "Send the image bytes as the request body" });
+    try {
+      return { file: await saveImage(dir, req.body, prefix) };
+    } catch (err) {
+      if (err instanceof UnsupportedImageError) return reply.code(415).send({ error: err.message });
+      throw err;
+    }
+  });
+
+  await app.register(fastifyStatic, {
+    root: dir,
+    prefix: `/${route}/`,
+    decorateReply: false,
+    index: false,
+    allowedPath: (path) => /\.(png|jpe?g|webp)$/i.test(path),
+    setHeaders: (res, path) => {
+      // Uploaded images are content-addressed and never change; hand-placed ones might.
+      const immutable = new RegExp(`[\\\\/]${prefix}-[0-9a-f]{16}\\.\\w+$`).test(path);
+      res.header("Cache-Control", immutable ? "public, max-age=31536000, immutable" : "no-cache");
+    },
+  });
+}
 
 // --- Pages ------------------------------------------------------------------
 

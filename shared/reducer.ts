@@ -103,6 +103,73 @@ export function reduce(state: AppState, action: Action): AppState {
       if (!state.trailDraft) throw new ActionError("There are no trail edits to discard");
       return { ...state, trailDraft: null };
 
+    case "character/add": {
+      const c = action.character;
+      if (state.characters.some((x) => x.id === c.id)) throw new ActionError(`Character "${c.id}" already exists`);
+      checkPlace(state, c.address);
+      const next = { ...state, characters: [...state.characters, c] };
+      if (!action.stepId) return next;
+      const stepId = action.stepId;
+      return editTrail(next, (trail) => {
+        const i = stepIndex(trail, stepId);
+        return trail.with(i, { ...trail[i], characterIds: [...trail[i].characterIds, c.id] });
+      });
+    }
+    case "character/update": {
+      const i = characterIndex(state, action.characterId);
+      if (action.patch.address) checkPlace(state, action.patch.address);
+      return { ...state, characters: state.characters.with(i, { ...state.characters[i], ...action.patch }) };
+    }
+    case "character/delete": {
+      characterIndex(state, action.characterId);
+      const drop = <T extends { characterIds: string[] }>(x: T): T =>
+        x.characterIds.includes(action.characterId)
+          ? { ...x, characterIds: x.characterIds.filter((id) => id !== action.characterId) }
+          : x;
+      return {
+        ...state,
+        characters: state.characters.filter((c) => c.id !== action.characterId),
+        trail: state.trail.map(drop),
+        trailDraft: state.trailDraft?.map(drop) ?? null,
+        notes: state.notes.map(drop),
+      };
+    }
+
+    case "key/add": {
+      if (state.keys.some((k) => k.letter === action.letter)) throw new ActionError(`Key ${action.letter} already exists`);
+      const stamp = action.unlocked ? action.stepId : null;
+      if (stamp) checkStepExists(state, stamp);
+      const key = { letter: action.letter, unlocked: action.unlocked, unlockedAtStep: stamp, note: "" };
+      return { ...state, keys: [...state.keys, key] };
+    }
+    case "key/update": {
+      const i = keyIndex(state, action.letter);
+      const { patch } = action;
+      if (patch.letter && patch.letter !== action.letter && state.keys.some((k) => k.letter === patch.letter)) {
+        throw new ActionError(`Key ${patch.letter} already exists`);
+      }
+      if (patch.unlockedAtStep) checkStepExists(state, patch.unlockedAtStep);
+      const key = { ...state.keys[i], ...patch };
+      if (!key.unlocked) key.unlockedAtStep = null;
+      return { ...state, keys: state.keys.with(i, key) };
+    }
+    case "key/delete":
+      keyIndex(state, action.letter);
+      return { ...state, keys: state.keys.filter((k) => k.letter !== action.letter) };
+
+    case "portrait/add":
+      if (state.portraits[action.portrait.id]) throw new ActionError(`Portrait "${action.portrait.id}" already exists`);
+      return { ...state, portraits: { ...state.portraits, [action.portrait.id]: action.portrait } };
+    case "portrait/update": {
+      const p = getPortrait(state, action.portraitId);
+      return { ...state, portraits: { ...state.portraits, [p.id]: { ...p, tags: action.tags } } };
+    }
+    case "portrait/delete": {
+      getPortrait(state, action.portraitId);
+      const { [action.portraitId]: _deleted, ...portraits } = state.portraits;
+      return { ...state, portraits };
+    }
+
     case "overlay/setMapView":
       return { ...state, overlay: { ...state.overlay, mapView: action.mode } };
     case "overlay/setMap":
@@ -114,6 +181,33 @@ export function reduce(state: AppState, action: Action): AppState {
 }
 
 type Trail = AppState["trail"];
+
+function characterIndex(state: AppState, characterId: string): number {
+  const i = state.characters.findIndex((c) => c.id === characterId);
+  if (i < 0) throw new ActionError(`No character "${characterId}"`);
+  return i;
+}
+
+function keyIndex(state: AppState, letter: string): number {
+  const i = state.keys.findIndex((k) => k.letter === letter.toUpperCase());
+  if (i < 0) throw new ActionError(`No key ${letter}`);
+  return i;
+}
+
+function getPortrait(state: AppState, portraitId: string) {
+  const p = state.portraits[portraitId];
+  if (!p) throw new ActionError(`No portrait "${portraitId}" in the library`);
+  return p;
+}
+
+/** A place reference (character address, note place) must name an existing zone. */
+function checkPlace(state: AppState, place: { mapId: string; zoneId: string } | null): void {
+  if (place) zoneIndex(getMap(state, place.mapId), place.zoneId);
+}
+
+function checkStepExists(state: AppState, stepId: string): void {
+  if (!allSteps(state).some((t) => t.id === stepId)) throw new ActionError(`No step "${stepId}" in the trail`);
+}
 
 /** Applies a trail change to the draft if one exists, else to the live trail. */
 function editTrail(state: AppState, change: (trail: Trail) => Trail): AppState {
@@ -151,6 +245,8 @@ function stepIndex(trail: Trail, stepId: string): number {
 
 /** A step is either on a visitable zone of a case map, or off-map with a label. */
 function checkStep(state: AppState, step: TrailStep, checkPlace: boolean): void {
+  const unknown = step.characterIds.find((id) => !state.characters.some((c) => c.id === id));
+  if (unknown) throw new ActionError(`No character "${unknown}"`);
   const onMap = step.mapId !== null || step.zoneId !== null;
   if (onMap && step.customLabel) throw new ActionError("A step is either on the map or off-map with a label, not both");
   if (!onMap && !step.customLabel) throw new ActionError("An off-map step needs a label");

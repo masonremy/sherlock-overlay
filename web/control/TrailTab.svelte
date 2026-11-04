@@ -1,6 +1,7 @@
 ﻿<script lang="ts">
   import type { ActionInput } from "../../shared/actions";
   import type { TrailStep } from "../../shared/schema";
+  import Avatar from "../lib/Avatar.svelte";
   import type { Connection } from "../lib/socket";
   import { isNumbered, KIND_LABELS, leadCount, stepPlace } from "../lib/trail";
   import type { PlayState } from "./play.svelte";
@@ -165,6 +166,10 @@
             <span class="num" class:hollow={!isNumbered(step.kind)}>{i + 1}</span>
             <span class="place">{step.zoneId ? "" : "✉ "}{app ? stepPlace(step, app.maps) : ""}</span>
             {#if step.kind !== "lead"}<span class="kind">{KIND_LABELS[step.kind]}</span>{/if}
+            {#each step.characterIds as cid (cid)}
+              {@const who = app?.characters.find((c) => c.id === cid)}
+              {#if who}<span class="face" title={who.name}><Avatar character={who} size={22} ring={false} /></span>{/if}
+            {/each}
             {#if step.note}<span class="note">{step.note}</span>{/if}
           </button>
         </div>
@@ -193,6 +198,37 @@
               onchange={(e) => commitText(step, "note", e.currentTarget)}
               onkeydown={(e) => e.key === "Enter" && e.currentTarget.blur()}
             />
+            {#if app?.characters.length}
+              <div class="people">
+                {#each step.characterIds as cid (cid)}
+                  {@const who = app.characters.find((c) => c.id === cid)}
+                  {#if who}
+                    <span class="chip">
+                      {who.name}
+                      <button
+                        type="button"
+                        aria-label="Unlink {who.name}"
+                        onclick={() => update(step, { characterIds: step.characterIds.filter((x) => x !== cid) })}>×</button
+                      >
+                    </span>
+                  {/if}
+                {/each}
+                <select
+                  value=""
+                  aria-label="Link a character"
+                  onchange={(e) => {
+                    const v = e.currentTarget.value;
+                    if (v) update(step, { characterIds: [...step.characterIds, v] });
+                    e.currentTarget.value = "";
+                  }}
+                >
+                  <option value="">+ Met here…</option>
+                  {#each app.characters.filter((c) => !step.characterIds.includes(c.id)) as c (c.id)}
+                    <option value={c.id}>{c.name}</option>
+                  {/each}
+                </select>
+              </div>
+            {/if}
             <div class="actions">
               {#if editMode}
                 <button type="button" onclick={() => (play.target = { kind: "insert", index: i })}>Insert before</button>
@@ -341,6 +377,30 @@
     font-size: 13px;
     white-space: nowrap;
     text-overflow: ellipsis;
+  }
+  .face {
+    display: flex;
+    flex: none;
+  }
+  .people {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+  }
+  .chip {
+    display: inline-flex;
+    gap: 2px;
+    align-items: center;
+    padding: 1px 2px 1px 8px;
+    border-radius: 999px;
+    background: #e6eefc;
+    font-size: 13px;
+  }
+  .chip button {
+    padding: 0 6px;
+    border: none;
+    background: none;
   }
   .editor {
     display: flex;

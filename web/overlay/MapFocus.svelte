@@ -1,9 +1,9 @@
-<script lang="ts">
+﻿<script lang="ts">
   import { Tween } from "svelte/motion";
   import { cubicInOut } from "svelte/easing";
   import type { Point } from "../../shared/geometry";
   import type { MirrorView } from "../../shared/protocol";
-  import type { MapDef, TrailStep } from "../../shared/schema";
+  import type { Character, MapDef, TrailStep } from "../../shared/schema";
   import { fitView, frameBox, type View } from "../lib/mapMath";
   import { frameAnchors } from "../lib/trail";
   import TrailLayer from "../lib/TrailLayer.svelte";
@@ -15,9 +15,10 @@
     mirror: MirrorView | null;
     width: number;
     height: number;
+    faces: Record<string, Character[]>;
   }
 
-  let { map, trail, mode, mirror, width, height }: Props = $props();
+  let { map, trail, mode, mirror, width, height, faces }: Props = $props();
 
   const [W, H] = $derived(map.imageSize);
   const fit = $derived(fitView(W, H, width, height, 6));
@@ -68,7 +69,7 @@
   >
     <img src="/maps/{map.image}" width={W} height={H} alt="" />
   </div>
-  <TrailLayer {trail} {map} view={view.current} {width} {height} pinSize={15} idPrefix="ov" />
+  <TrailLayer {trail} {map} {faces} view={view.current} {width} {height} pinSize={15} idPrefix="ov" />
 </div>
 
 <style>

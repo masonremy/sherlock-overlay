@@ -1,5 +1,50 @@
 import { z } from "zod";
-import { ImageFile, ImageSize, MapDef, MapId, MapView, StepKind, Zone, ZonePatch } from "./schema";
+import {
+  Cameo,
+  CharacterStatus,
+  ImageFile,
+  ImageSize,
+  Letter,
+  LibraryPortrait,
+  MapDef,
+  MapId,
+  MapView,
+  PlaceRef,
+  PortraitFile,
+  PortraitId,
+  StepKind,
+  Zone,
+  ZonePatch,
+} from "./schema";
+
+const CharacterId = z.string().regex(/^[A-Za-z0-9_-]{1,40}$/, "Character id: letters, digits, - and _");
+
+// Written out twice (with and without defaults) because a partial schema built
+// from defaulted fields would fill in defaults on every patch.
+const characterFields = {
+  name: z.string().trim().min(1, "Name is required").max(60),
+  role: z.string().trim().max(60),
+  status: CharacterStatus,
+  portrait: PortraitFile.nullable(),
+  cameo: Cameo.nullable(),
+  address: PlaceRef.nullable(),
+  notes: z.string().max(2000),
+  hidden: z.boolean(),
+};
+
+const NewCharacter = z.object({
+  id: CharacterId,
+  name: characterFields.name,
+  role: characterFields.role.default(""),
+  status: characterFields.status.default("witness"),
+  portrait: characterFields.portrait.default(null),
+  cameo: characterFields.cameo.default(null),
+  address: characterFields.address.default(null),
+  notes: characterFields.notes.default(""),
+  hidden: characterFields.hidden.default(false),
+});
+
+const CharacterPatch = z.object(characterFields).partial().strict();
 
 const StepId = z.string().regex(/^[A-Za-z0-9_-]{1,40}$/, "Step id: letters, digits, - and _");
 const customLabel = z
@@ -68,6 +113,33 @@ export const Action = z.discriminatedUnion("type", [
   z.object({ type: z.literal("trail/beginEdit") }),
   z.object({ type: z.literal("trail/apply") }),
   z.object({ type: z.literal("trail/discard") }),
+
+  // Characters. add can link the new character to a step in the same change.
+  z.object({ type: z.literal("character/add"), character: NewCharacter, stepId: z.string().optional() }),
+  z.object({ type: z.literal("character/update"), characterId: z.string(), patch: CharacterPatch }),
+  z.object({ type: z.literal("character/delete"), characterId: z.string() }),
+
+  // Letter keys (Baker Street Irregulars), addressed by their letter.
+  z.object({
+    type: z.literal("key/add"),
+    letter: Letter,
+    unlocked: z.boolean().default(false),
+    stepId: z.string().nullable().default(null),
+  }),
+  z.object({
+    type: z.literal("key/update"),
+    letter: z.string(),
+    patch: z
+      .object({ letter: Letter, unlocked: z.boolean(), unlockedAtStep: z.string().nullable(), note: z.string().max(300) })
+      .partial()
+      .strict(),
+  }),
+  z.object({ type: z.literal("key/delete"), letter: z.string() }),
+
+  // Portrait library
+  z.object({ type: z.literal("portrait/add"), portrait: LibraryPortrait }),
+  z.object({ type: z.literal("portrait/update"), portraitId: PortraitId, tags: LibraryPortrait.shape.tags }),
+  z.object({ type: z.literal("portrait/delete"), portraitId: PortraitId }),
 
   // Overlay
   z.object({ type: z.literal("overlay/setMapView"), mode: MapView }),

@@ -9,6 +9,7 @@ export function describeAction(action: Action, state: AppState): string {
   const trail = state.trailDraft ?? state.trail;
   const draft = state.trailDraft ? " (draft)" : "";
   const stepNo = (stepId: string) => trail.findIndex((t) => t.id === stepId) + 1;
+  const charName = (id: string) => state.characters.find((c) => c.id === id)?.name ?? id;
   const place = (s: Pick<TrailStep, "mapId" | "zoneId" | "customLabel">) =>
     s.mapId && s.zoneId ? zoneLabel(s.mapId, s.zoneId) : `“${s.customLabel}”`;
 
@@ -57,6 +58,26 @@ export function describeAction(action: Action, state: AppState): string {
       return "Applied trail edits";
     case "trail/discard":
       return "Discarded trail edits";
+    case "character/add":
+      return `Added character ${action.character.name}${action.stepId ? ` at step ${stepNo(action.stepId)}` : ""}`;
+    case "character/update":
+      return `Edited character ${charName(action.characterId)}`;
+    case "character/delete":
+      return `Deleted character ${charName(action.characterId)}`;
+    case "key/add":
+      return `${action.unlocked ? "Unlocked" : "Added"} key ${action.letter}`;
+    case "key/update":
+      if (action.patch.unlocked === true) return `Unlocked key ${action.letter}`;
+      if (action.patch.unlocked === false) return `Locked key ${action.letter}`;
+      return `Edited key ${action.letter}`;
+    case "key/delete":
+      return `Deleted key ${action.letter}`;
+    case "portrait/add":
+      return "Added a portrait to the library";
+    case "portrait/update":
+      return "Retagged a library portrait";
+    case "portrait/delete":
+      return "Removed a library portrait";
     case "overlay/setMapView":
       return `Overlay map view: ${action.mode}`;
     case "overlay/setMap":

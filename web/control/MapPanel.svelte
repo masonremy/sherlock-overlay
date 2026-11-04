@@ -1,13 +1,21 @@
 ﻿<script lang="ts">
-  import { tick } from "svelte";
+  import { tick, untrack } from "svelte";
   import type { TrailStep } from "../../shared/schema";
+  import { searchCharacters, suggestKind } from "../lib/cast";
   import type { Connection } from "../lib/socket";
   import { KIND_LABELS, newStepId, searchZones, type ZoneMatch } from "../lib/trail";
   import PlayMap from "./PlayMap.svelte";
   import type { PlayState } from "./play.svelte";
 
-  let { conn, play, active, onSetupMaps }: { conn: Connection; play: PlayState; active: boolean; onSetupMaps: () => void } =
-    $props();
+  interface Props {
+    conn: Connection;
+    play: PlayState;
+    active: boolean;
+    onSetupMaps: () => void;
+    onAddCharacter: () => void;
+  }
+
+  let { conn, play, active, onSetupMaps, onAddCharacter }: Props = $props();
   // svelte-ignore state_referenced_locally (the connection lives as long as the page)
   const { snapshot, dispatch, undo, sendMirror } = conn;
 
@@ -53,13 +61,24 @@
   let searchFocused = $state(false);
   let hi = $state(0);
   let searchInput = $state<HTMLInputElement>();
-  const results = $derived(searchZones(query, caseMaps));
+  // Characters with an address come first: typing a name jumps to where they live.
+  type Match = ZoneMatch & { who?: string };
+  const results = $derived.by((): Match[] => {
+    if (!app) return [];
+    const people = searchCharacters(query, app.characters, app.maps, app.case.mapIds).map((m) => ({
+      mapId: m.mapId,
+      mapName: app.maps[m.mapId]?.name || m.mapId,
+      zone: m.zone,
+      who: m.character.name,
+    }));
+    return [...people, ...searchZones(query, caseMaps)];
+  });
   $effect(() => {
     query;
     hi = 0;
   });
 
-  function choose(m: ZoneMatch) {
+  function choose(m: Match) {
     play.showZone(m.mapId, m.zone.id);
   }
 
@@ -99,6 +118,42 @@
   });
 
   const canRecord = $derived(!!app && !!map && !!selectedZone?.visitable);
+
+  // Suggest a kind for the selected zone (a return visit after a new letter is a re-read).
+  let suggested = $state<TrailStep["kind"]>("lead");
+  $effect(() => {
+    const zoneId = play.selected;
+    const mapId = map?.id;
+    untrack(() => {
+      suggested = app && mapId && zoneId ? suggestKind(trail, app.keys, mapId, zoneId) : "lead";
+      kind = suggested;
+    });
+  });
+
+  // After recording at someone's address, offer to link them to the new step.
+  let metOffer = $state<{ stepId: string; ids: string[] } | null>(null);
+  let metTimer: ReturnType<typeof setTimeout> | undefined;
+  const metChars = $derived(
+    metOffer && app ? app.characters.filter((c) => metOffer!.ids.includes(c.id)) : [],
+  );
+  function offerMet(stepId: string, place: { mapId: string; zoneId: string }) {
+    const ids =
+      app?.characters
+        .filter((c) => !c.hidden && c.address?.mapId === place.mapId && c.address.zoneId === place.zoneId)
+        .map((c) => c.id) ?? [];
+    clearTimeout(metTimer);
+    metOffer = ids.length ? { stepId, ids } : null;
+    if (metOffer) metTimer = setTimeout(() => (metOffer = null), 12000);
+  }
+  function linkMet(characterId: string) {
+    if (!metOffer) return;
+    const step = trail.find((t) => t.id === metOffer!.stepId);
+    if (step && !step.characterIds.includes(characterId)) {
+      dispatch({ type: "trail/update", stepId: step.id, patch: { characterIds: [...step.characterIds, characterId] } });
+    }
+    const ids = metOffer.ids.filter((id) => id !== characterId);
+    metOffer = ids.length ? { ...metOffer, ids } : null;
+  }
   const buttonLabel = $derived.by(() => {
     if (!selectedZone) return "Select a zone on the map";
     if (!selectedZone.visitable) return `${selectedZone.label} is not visitable`;
@@ -111,15 +166,20 @@
     const t = play.target;
     const at = new Date().toISOString();
     let n: number;
+    let stepId: string;
     if (t.kind === "replace") {
       const patch = "customLabel" in place ? { ...place, mapId: null, zoneId: null } : { ...place, customLabel: null };
       dispatch({ type: "trail/update", stepId: t.stepId, patch: { ...patch, kind } });
       n = targetStep + 1;
+      stepId = t.stepId;
     } else {
       const index = t.kind === "insert" ? t.index : undefined;
-      dispatch({ type: "trail/add", step: { id: newStepId(), ...place, kind, at }, index });
+      stepId = newStepId();
+      dispatch({ type: "trail/add", step: { id: stepId, ...place, kind, at }, index });
       n = (index ?? trail.length) + 1;
     }
+    if ("zoneId" in place) offerMet(stepId, place);
+    else metOffer = null;
     play.resetTarget();
     play.selected = null;
     kind = "lead";
@@ -168,6 +228,9 @@
       else play.selected = null;
     } else if (e.key === "0") {
       playMap?.fit();
+    } else if (e.key === "c" || e.key === "C") {
+      e.preventDefault();
+      onAddCharacter();
     }
   }
 </script>
@@ -204,7 +267,7 @@
                   onmousedown={(e) => e.preventDefault()}
                   onclick={() => choose(m)}
                 >
-                  <span>{m.zone.label}</span>
+                  <span>{#if m.who}<b>{m.who}</b> → {/if}{m.zone.label}</span>
                   {#if caseMaps.length > 1}<small>{m.mapName}</small>{/if}
                 </button>
               </li>
@@ -257,7 +320,8 @@
 
     <div class="row">
       {#if offMap === null}
-        <button type="button" onclick={() => (offMap = "")}>Record off-map lead…</button>
+        <button type="button" onclick={() => (offMap = "")}>Off-map lead…</button>
+        <button type="button" onclick={onAddCharacter} title="Met someone (C)">+ Character</button>
       {:else}
         <!-- svelte-ignore a11y_autofocus -->
         <input
@@ -278,6 +342,19 @@
         <button type="button" class="undo" onclick={() => ((undoUntil = 0), undo())}>Undo</button>
       {/if}
     </div>
+
+    {#if selectedZone && suggested === "reread"}
+      <p class="suggest">Re-read suggested: you've unlocked a letter since your last visit to {selectedZone.label}.</p>
+    {/if}
+
+    {#if metChars.length}
+      <div class="met">
+        {#each metChars as c (c.id)}
+          <button type="button" onclick={() => linkMet(c.id)}>Also met: {c.name}?</button>
+        {/each}
+        <button type="button" class="x" onclick={() => (metOffer = null)} aria-label="Dismiss">×</button>
+      </div>
+    {/if}
 
     {#if app?.trailDraft}
       <p class="draft">Editing the trail: new steps are staged until you Apply in the Trail tab.</p>
@@ -412,6 +489,21 @@
     background: #2b2118;
     border-color: #2b2118;
     color: #fff;
+  }
+  .suggest {
+    margin: 0;
+    font-size: 12px;
+    color: #6b5a44;
+  }
+  .met {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+  }
+  .met button:not(.x) {
+    background: #e6eefc;
+    border-color: #9db4dc;
   }
   .draft {
     margin: 0;

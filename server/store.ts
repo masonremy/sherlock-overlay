@@ -3,7 +3,7 @@ import { basename, join } from "node:path";
 import { parseAction } from "../shared/actions";
 import { apply, createHistory, jump, timeline, type History, type Timeline } from "../shared/history";
 import { ActionError } from "../shared/reducer";
-import { AppState, CaseState, MapDef, MapId, createInitialState } from "../shared/schema";
+import { AppState, CaseState, LibraryPortrait, MapDef, MapId, createInitialState } from "../shared/schema";
 
 // Owns the authoritative state: the current case plus the map library. Applies
 // actions, keeps the undo stack, and (debounced) writes cases/<id>/state.json
@@ -15,6 +15,7 @@ export type DispatchResult = { ok: true } | { ok: false; error: string };
 export interface StoreOptions {
   casesDir: string;
   mapsDir: string;
+  portraitsDir: string;
   caseId: string;
   debounceMs?: number;
   /** Minimum time between rolling backups (state.<rev>.json). */
@@ -29,6 +30,7 @@ export class AppStore {
   private saving: Promise<void> = Promise.resolve();
   /** Map objects as last written (or loaded), to write only what changed. */
   private savedMaps: Record<string, MapDef>;
+  private savedPortraits: AppState["portraits"];
   private lastBackupAt = 0;
 
   private constructor(
@@ -36,9 +38,12 @@ export class AppStore {
     initial: AppState,
     /** Map ids whose files exist but couldn't be read; set aside before any write. */
     private readonly unreadableMaps: Set<string>,
+    /** library.json exists but couldn't be read; set aside before the first write. */
+    private libraryUnreadable: boolean,
   ) {
     this.history = createHistory(initial, new Date().toISOString());
     this.savedMaps = initial.maps;
+    this.savedPortraits = initial.portraits;
   }
 
   static async load(options: StoreOptions): Promise<AppStore> {
@@ -46,9 +51,11 @@ export class AppStore {
     const caseDir = join(opts.casesDir, opts.caseId);
     await mkdir(join(caseDir, "assets"), { recursive: true });
     await mkdir(opts.mapsDir, { recursive: true });
+    await mkdir(opts.portraitsDir, { recursive: true });
     const caseState = await readCaseState(caseDir);
     const { maps, unreadable } = await readMaps(opts.mapsDir);
-    return new AppStore(opts, { ...caseState, maps }, unreadable);
+    const library = await readLibrary(opts.portraitsDir);
+    return new AppStore(opts, { ...caseState, maps, portraits: library.portraits }, unreadable, library.unreadable);
   }
 
   get caseId(): string {
@@ -134,7 +141,7 @@ export class AppStore {
   }
 
   private async save(snapshot: AppState): Promise<void> {
-    const { maps, ...caseState } = snapshot;
+    const { maps, portraits, ...caseState } = snapshot;
     const caseDir = join(this.opts.casesDir, this.opts.caseId);
     await writeJson(join(caseDir, "state.json"), caseState);
     if (Date.now() - this.lastBackupAt >= this.opts.backupIntervalMs) {
@@ -153,6 +160,34 @@ export class AppStore {
       if (!maps[id]) await moveToTrash(mapsDir, id, ".json");
     }
     this.savedMaps = maps;
+
+    if (portraits !== this.savedPortraits) {
+      const file = join(this.opts.portraitsDir, "library.json");
+      if (this.libraryUnreadable) {
+        await rename(file, join(this.opts.portraitsDir, `library.broken-${Date.now()}.json`));
+        this.libraryUnreadable = false;
+      }
+      await writeJson(file, portraits);
+      this.savedPortraits = portraits;
+    }
+  }
+}
+
+async function readLibrary(dir: string): Promise<{ portraits: AppState["portraits"]; unreadable: boolean }> {
+  let text: string;
+  try {
+    text = await readFile(join(dir, "library.json"), "utf8");
+  } catch {
+    return { portraits: {}, unreadable: false };
+  }
+  try {
+    const raw = JSON.parse(text) as Record<string, unknown>;
+    const portraits: AppState["portraits"] = {};
+    for (const [id, p] of Object.entries(raw)) portraits[id] = LibraryPortrait.parse({ ...(p as object), id });
+    return { portraits, unreadable: false };
+  } catch (err) {
+    console.warn("[store] skipping portraits/library.json: could not be read (left untouched)", err);
+    return { portraits: {}, unreadable: true };
   }
 }
 

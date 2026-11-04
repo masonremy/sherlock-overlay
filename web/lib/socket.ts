@@ -1,6 +1,6 @@
 ﻿import { writable, type Readable } from "svelte/store";
 import { WS_PATH } from "../../shared/constants";
-import type { ClientMessage, MirrorView, ServerMessage } from "../../shared/protocol";
+import type { ClientMessage, Cue, MirrorView, ServerMessage } from "../../shared/protocol";
 import type { AppState } from "../../shared/schema";
 import type { ActionInput } from "../../shared/actions";
 import type { Timeline } from "../../shared/history";
@@ -24,12 +24,15 @@ export interface Connection {
   lastError: Readable<string | null>;
   /** The panel's map view, streamed while the overlay is in mirror mode. */
   mirror: Readable<MirrorView | null>;
+  /** Latest presentation cue; seq changes even when the same cue repeats. */
+  cue: Readable<{ cue: Cue; seq: number } | null>;
   dispatch(action: ActionInput): void;
   undo(): void;
   redo(): void;
   /** Roll back (negative) or forward through history in one change. */
   jump(offset: number): void;
   sendMirror(view: MirrorView): void;
+  sendCue(cue: Cue): void;
 }
 
 export function connect(): Connection {
@@ -37,6 +40,8 @@ export function connect(): Connection {
   const snapshot = writable<Snapshot | null>(null);
   const lastError = writable<string | null>(null);
   const mirror = writable<MirrorView | null>(null);
+  const cue = writable<{ cue: Cue; seq: number } | null>(null);
+  let cueSeq = 0;
   let ws: WebSocket | null = null;
   let retryMs = 500;
   let latestRev = -1;
@@ -58,6 +63,10 @@ export function connect(): Connection {
       }
       if (msg.type === "mirror") {
         mirror.set(msg.view);
+        return;
+      }
+      if (msg.type === "cue") {
+        cue.set({ cue: msg.cue, seq: ++cueSeq });
         return;
       }
       // A restarted server may reload an older rev from disk; accept it after a reconnect.
@@ -92,10 +101,12 @@ export function connect(): Connection {
     snapshot,
     lastError,
     mirror,
+    cue,
     dispatch: (action) => send({ type: "action", action }),
     undo: () => send({ type: "undo" }),
     redo: () => send({ type: "redo" }),
     jump: (offset) => send({ type: "jump", offset }),
     sendMirror: (view) => send({ type: "mirror", view }),
+    sendCue: (c) => send({ type: "cue", cue: c }),
   };
 }

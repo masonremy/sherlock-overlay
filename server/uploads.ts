@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+﻿import { createHash } from "node:crypto";
 import { access, mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -15,16 +15,16 @@ export function sniffImage(buf: Buffer): ImageType | null {
 }
 
 /**
- * Saves a map image as maps/img-<hash>.<ext> and returns the file name. Names
- * are content-addressed, so replacing a map's image never overwrites the old
- * file and undo can switch back to it.
+ * Saves an image as <dir>/<prefix>-<hash>.<ext> and returns the file name
+ * (maps use "img", portraits "p"). Names are content-addressed, so replacing
+ * an image never overwrites the old file and undo can switch back to it.
  */
-export async function saveMapImage(mapsDir: string, buf: Buffer): Promise<string> {
+export async function saveImage(dir: string, buf: Buffer, prefix: string): Promise<string> {
   const type = sniffImage(buf);
   if (!type) throw new UnsupportedImageError("Not a PNG, JPG or WebP image");
-  const name = `img-${createHash("sha256").update(buf).digest("hex").slice(0, 16)}.${type}`;
-  const file = join(mapsDir, name);
-  await mkdir(mapsDir, { recursive: true });
+  const name = `${prefix}-${createHash("sha256").update(buf).digest("hex").slice(0, 16)}.${type}`;
+  const file = join(dir, name);
+  await mkdir(dir, { recursive: true });
   try {
     await access(file);
   } catch {

@@ -2,7 +2,9 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { mkdtemp, readdir, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { saveMapImage, sniffImage, UnsupportedImageError } from "./uploads";
+import { saveImage, sniffImage, UnsupportedImageError } from "./uploads";
+
+const saveMapImage = (dir: string, buf: Buffer) => saveImage(dir, buf, "img");
 
 const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3]);
 const jpg = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3]);
@@ -37,6 +39,10 @@ describe("saveMapImage", () => {
     const b = await saveMapImage(dir, png);
     expect(a).toBe(b);
     expect(await readdir(dir)).toHaveLength(1);
+  });
+
+  it("uses the given prefix (portraits are p-<hash>)", async () => {
+    expect(await saveImage(dir, jpg, "p")).toMatch(/^p-[0-9a-f]{16}\.jpg$/);
   });
 
   it("rejects anything that is not an image", async () => {

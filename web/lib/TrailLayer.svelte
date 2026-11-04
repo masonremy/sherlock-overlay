@@ -1,7 +1,8 @@
-<script lang="ts">
+﻿<script lang="ts">
   import { fade } from "svelte/transition";
   import type { Point } from "../../shared/geometry";
-  import type { MapDef, TrailStep } from "../../shared/schema";
+  import type { Character, MapDef, TrailStep } from "../../shared/schema";
+  import Avatar from "./Avatar.svelte";
   import type { View } from "./mapMath";
   import { curvePath, pathSegments, pinGroups } from "./trail";
 
@@ -18,9 +19,12 @@
     pinSize?: number;
     /** Unique per page, for SVG mask ids. */
     idPrefix: string;
+    /** Characters met at each zone, shown as small faces above the pin. */
+    faces?: Record<string, Character[]>;
   }
 
-  let { trail, map, view, width, height, pinSize = 14, idPrefix }: Props = $props();
+  let { trail, map, view, width, height, pinSize = 14, idPrefix, faces = {} }: Props = $props();
+  const MAX_FACES = 3;
 
   const anchors = $derived(Object.fromEntries(map.zones.map((z) => [z.id, z.anchor])) as Record<string, Point>);
   const groups = $derived(pinGroups(trail, map.id).filter((g) => anchors[g.zoneId]));
@@ -48,8 +52,25 @@
   {#each groups as g (g.zoneId)}
     {@const [x, y] = toScreen(anchors[g.zoneId])}
     {@const w = g.hollow ? 2 * pinSize : pillWidth(g.label)}
+    {@const met = faces[g.zoneId] ?? []}
     <g transform="translate({x},{y})" class="pin" class:latest={g.lastIndex === latest}>
       <g class="drop">
+        {#if met.length}
+          {@const size = pinSize * 2.3}
+          {@const step = size * 0.72}
+          {@const shown = met.slice(0, MAX_FACES)}
+          {@const x0 = (-(shown.length - 1) * step) / 2 - size / 2}
+          <g class="faces">
+            {#each shown as c, i (c.id)}
+              <Avatar character={c} {size} x={x0 + i * step} y={-pinSize - size - 2} />
+            {/each}
+            {#if met.length > MAX_FACES}
+              <text class="more" x={x0 + shown.length * step + size * 0.15} y={-pinSize - size / 2 - 2} font-size={pinSize}
+                >+{met.length - MAX_FACES}</text
+              >
+            {/if}
+          </g>
+        {/if}
         {#if g.lastIndex === latest}
           <circle class="pulse" r={pinSize} />
         {/if}
@@ -116,6 +137,16 @@
     font-weight: 700;
     text-anchor: middle;
     dominant-baseline: central;
+  }
+  .faces {
+    filter: drop-shadow(0 2px 3px rgb(0 0 0 / 0.4));
+  }
+  text.more {
+    fill: #2b2118;
+    stroke: #fff8ec;
+    stroke-width: 3px;
+    paint-order: stroke;
+    text-anchor: start;
   }
   .pulse {
     fill: none;
