@@ -8,7 +8,7 @@ address them one at a time; tick an item (and note the commit) when it's done.
 - [ ] **1. Evidence cards.** Clue notes as typed paper slips ("from 13 SW, step 4", linked portraits): a *Show card* button that puts one in the focus area, a card wall in the expanded notes view, and the evidence-slip icon. (DESIGN.md › Notes › Evidence cards; not assigned to a phase in the build plan.)
 - [ ] **2. Clickable overlay preview in the panel.** A live mini overlay where clicking a face, pin, note or the title bar opens that item's editor. (DESIGN.md › Live editing › Edit from the preview.)
 - [ ] **3. Named font themes.** Save and switch font setups by name, like layouts. (DESIGN.md › Typography › Live updates.)
-- [ ] **4. Paper and ink-edge textures.** Shared SVG filters for aged-paper panels with an inked edge. (DESIGN.md › Icons & placeholder art; Overlay layout & visual design › Look.)
+- [x] **4. Paper and ink-edge textures.** Shared SVG filters for aged-paper panels with an inked edge. (DESIGN.md › Icons & placeholder art; Overlay layout & visual design › Look.) Done: grain and foxing tiles, inked-edge filter, *Paper texture* switch in the Overlay tab.
 - [ ] **5. OBS hotkey registration** via a small WebSocket client script. (DESIGN.md › Control panel UX & hotkeys; the design defers this to "later".)
 
 ## Partly built

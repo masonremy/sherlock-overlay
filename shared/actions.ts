@@ -253,6 +253,7 @@ export const Action = z.discriminatedUnion("type", [
         notesAutoScroll: z.boolean(),
         showGuides: z.boolean(),
         reducedMotion: z.boolean(),
+        textures: z.boolean(),
       })
       .partial()
       .strict(),

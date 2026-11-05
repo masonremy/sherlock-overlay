@@ -24,7 +24,7 @@
   }
 </script>
 
-<div class="intro" in:enter out:leave>
+<div class="intro paper" in:enter out:leave>
   <Avatar {character} size={280} />
   <div class="text">
     <span class="met">Enter</span>
@@ -39,11 +39,13 @@
     display: flex;
     gap: 32px;
     align-items: center;
+    position: relative;
     padding: 28px 40px 28px 28px;
-    background: #efe4cc;
-    border: 1px solid #8a7354;
     border-radius: 8px;
-    box-shadow: 0 10px 40px rgb(0 0 0 / 0.5);
+    /* Lifted higher than the panels it passes over. */
+    box-shadow:
+      inset 0 0 22px rgb(110 75 35 / 0.28),
+      0 10px 40px rgb(0 0 0 / 0.5);
     transform-origin: left center;
   }
   .text {

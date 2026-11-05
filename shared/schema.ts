@@ -140,6 +140,8 @@ export const OverlayState = z.object({
   showGuides: z.boolean().default(false),
   /** Swap animations for quick fades. */
   reducedMotion: z.boolean().default(false),
+  /** Aged-paper grain and inked edges on panels (off: flat colour, cheaper on the GPU). */
+  textures: z.boolean().default(true),
 });
 
 export const CaseState = z.object({

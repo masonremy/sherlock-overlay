@@ -1,0 +1,39 @@
+/* Aged paper with an inked edge, for overlay panels and cards. Put .paper on
+   the panel; .flat on an ancestor turns the textures off (plain colour and a
+   straight rule). The tiles come from textures.ts, the ink filter from
+   PaperFilters.svelte. */
+
+.paper {
+  background-color: var(--paper);
+  background-image:
+    var(--tex-grain),
+    var(--tex-foxing),
+    radial-gradient(ellipse at 50% 42%, transparent 58%, rgb(110 75 35 / 0.2) 100%);
+  /* Edges burnt darker with age, plus the drop shadow onto the scene. */
+  box-shadow:
+    inset 0 0 22px rgb(110 75 35 / 0.28),
+    0 4px 18px rgb(0 0 0 / 0.4);
+}
+
+/* The inked rule, a little inside the edge. */
+.paper::after {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border: 2px solid rgb(43 33 24 / 0.78);
+  border-radius: inherit;
+  filter: url(#ink-edge);
+  pointer-events: none;
+}
+
+.flat .paper {
+  background-image: none;
+  box-shadow: 0 4px 18px rgb(0 0 0 / 0.4);
+}
+
+.flat .paper::after {
+  inset: 0;
+  border-width: 1px;
+  border-color: #8a7354;
+  filter: none;
+}

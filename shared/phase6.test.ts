@@ -169,6 +169,13 @@ describe("timesheet and turn fields on steps", () => {
   });
 });
 
+describe("paper textures", () => {
+  it("are on by default and can be switched off", () => {
+    expect(base().overlay.textures).toBe(true);
+    expect(run(base(), { type: "overlay/configure", patch: { textures: false } }).overlay.textures).toBe(false);
+  });
+});
+
 describe("overlay options", () => {
   it("shows guides, reduces motion, and can put the verdict in focus", () => {
     let s = run(base(), { type: "overlay/configure", patch: { showGuides: true, reducedMotion: true } });

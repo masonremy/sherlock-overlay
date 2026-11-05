@@ -58,6 +58,14 @@
         />
         <span><strong>Reduced motion</strong> <small>Quick fades instead of drops, draws, slides and flips; no pulsing.</small></span>
       </label>
+      <label>
+        <input
+          type="checkbox"
+          checked={app.overlay.textures}
+          onchange={(e) => dispatch({ type: "overlay/configure", patch: { textures: e.currentTarget.checked } })}
+        />
+        <span><strong>Paper texture</strong> <small>Aged-paper grain and inked edges on panels. Off: flat colour, a little lighter on the GPU.</small></span>
+      </label>
     </fieldset>
 
     {#if caseMaps.length > 1}

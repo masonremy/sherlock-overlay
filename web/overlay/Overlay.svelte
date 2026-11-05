@@ -21,6 +21,7 @@
   import MapFocus from "./MapFocus.svelte";
   import NewspaperFocus from "./NewspaperFocus.svelte";
   import NotesFocus from "./NotesFocus.svelte";
+  import PaperFilters from "../lib/PaperFilters.svelte";
   import TitleBar from "./TitleBar.svelte";
   import Toolkit from "./Toolkit.svelte";
   import VerdictCard from "./VerdictCard.svelte";
@@ -210,10 +211,11 @@
   });
 </script>
 
-<div class="stage" class:checker={bg === "checker"} class:paperbg={bg === "paper"} class:reduced={motion.reduced} style={vars()}>
+<div class="stage" class:checker={bg === "checker"} class:paperbg={bg === "paper"} class:reduced={motion.reduced} class:flat={app?.overlay.textures === false} style={vars()}>
+  <PaperFilters />
   {#if app && !app.overlay.hideAll}
     {#if shows("header")}
-      <header class="panel" style="{box('header')};{vars('header')}">
+      <header class="panel paper"style="{box('header')};{vars('header')}">
         <TitleBar {app} />
       </header>
     {/if}
@@ -222,7 +224,7 @@
       {#key focusShown}
         {#if focusShown === "map" && map}
           <section
-            class="panel focus"
+            class="panel paper focus"
             style="{box('focus')};{vars('focus')}"
             style:padding="{PAD}px"
             in:fold={{ origin: foldOrigin("map"), delay: 180 }}
@@ -263,7 +265,7 @@
           </section>
         {:else if focusShown === "newspaper" && openPaper}
           <section
-            class="panel focus"
+            class="panel paper focus"
             style="{box('focus')};{vars('focus')}"
             style:padding="{PAD}px"
             in:fold={{ origin: foldOrigin("newspaper"), delay: 180 }}
@@ -273,7 +275,7 @@
           </section>
         {:else if focusShown === "notes"}
           <section
-            class="panel focus"
+            class="panel paper focus"
             style="{box('focus')};{vars('focus')}"
             in:fold={{ origin: foldOrigin("notes"), delay: 180 }}
             out:fold={{ origin: foldOrigin("notes") }}
@@ -282,7 +284,7 @@
           </section>
         {:else if focusShown === "verdict"}
           <section
-            class="panel focus"
+            class="panel paper focus"
             style="{box('focus')};{vars('focus')}"
             in:fold={{ origin: foldOrigin("verdict"), delay: 180 }}
             out:fold={{ origin: foldOrigin("verdict") }}
@@ -294,25 +296,25 @@
     {/if}
 
     {#if cast.length && shows("cast")}
-      <section class="panel" style="{box('cast')};{vars('cast')}">
+      <section class="panel paper"style="{box('cast')};{vars('cast')}">
         <CastRail characters={railCast} maps={app.maps} width={L.cast.w} height={L.cast.h} />
       </section>
     {/if}
 
     {#if app.keys.length && shows("keys")}
-      <section class="panel" style="{box('keys')};{vars('keys')}">
+      <section class="panel paper"style="{box('keys')};{vars('keys')}">
         <KeyGrid keys={app.keys} {trail} width={L.keys.w} height={L.keys.h} animate={settled && !motion.reduced} />
       </section>
     {/if}
 
     {#if onStream.length && shows("notes")}
-      <section class="panel" style="{box('notes')};{vars('notes')}" transition:fade={{ duration: ms(300) }}>
+      <section class="panel paper"style="{box('notes')};{vars('notes')}" transition:fade={{ duration: ms(300) }}>
         <NotesStrip notes={onStream} characters={app.characters} maps={app.maps} scroll={$notesScroll} autoScroll={app.overlay.notesAutoScroll} />
       </section>
     {/if}
 
     {#if shows("toolkit")}
-      <section class="panel toolkit" style="{box('toolkit')};{vars('toolkit')}">
+      <section class="panel paper toolkit"style="{box('toolkit')};{vars('toolkit')}">
         <Toolkit
           items={tools}
           focus={app.overlay.focus}
@@ -357,13 +359,11 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0s !important;
   }
+  /* The look (paper, inked edge, shadow) comes from .paper in paper.css. */
   .panel {
     position: absolute;
     box-sizing: border-box;
-    background: #efe4cc;
     color: #2b2118;
-    border: 1px solid #8a7354;
-    box-shadow: 0 4px 18px rgb(0 0 0 / 0.4);
   }
   .toolkit {
     border-radius: 6px;
