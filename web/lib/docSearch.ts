@@ -81,6 +81,13 @@ export function pageHighlights(doc: DocText | null, page: number, query: string,
   return { all, active: line ? matchRects(line, active!.start, active!.end) : [] };
 }
 
+/** Whether the chosen result is still a match for the search (cleared or changed: it isn't). */
+export function activeStillMatches(doc: DocText | null, active: ActiveMatch, query: string): boolean {
+  const q = normalizeText(query.trim());
+  const line = doc?.pages[active.page - 1]?.lines[active.line];
+  return q.length >= 2 && !!line && normalizeText(line.text).slice(active.start, active.end) === q;
+}
+
 /**
  * A view rectangle [x0, y0, x1, y1] (page units) around a match: `width` of
  * the page wide, centred on the match, with the match a third of the way down.

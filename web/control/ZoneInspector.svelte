@@ -86,6 +86,13 @@
   }
   .row label {
     flex: 1;
+    min-width: 0;
+  }
+  /* Inputs have a wide built-in minimum; let them fit their column instead. */
+  .row input {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
   }
   .row .district {
     flex: 0 0 90px;

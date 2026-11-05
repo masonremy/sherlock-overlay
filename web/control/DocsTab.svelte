@@ -5,7 +5,8 @@
   import type { Paper } from "../../shared/schema";
   import DocPage from "../lib/DocPage.svelte";
   import { loadDocList, loadDocText } from "../lib/docs";
-  import { addressIn, matchRects, pageHighlights, searchDocs, viewAround, zoneForAddress, type DocMatch } from "../lib/docSearch";
+  import { untrack } from "svelte";
+  import { activeStillMatches, addressIn, matchRects, pageHighlights, searchDocs, viewAround, zoneForAddress, type DocMatch } from "../lib/docSearch";
   import type { ToolItem } from "../lib/focus";
   import { shelfPapers } from "../lib/papers";
   import type { Connection } from "../lib/socket";
@@ -118,11 +119,20 @@
     }
     return out;
   });
-  // Typing re-highlights whatever is on stream.
+  // Typing re-highlights whatever is on stream, and a chosen result the search
+  // no longer finds (cleared or changed) loses its mark.
   $effect(() => {
     const q = query.trim().slice(0, 120);
-    const d = current;
-    if (d && live(d) && $readers[d.id]?.query !== q) sendReader({ ...viewOf(d.id), doc: d.id, query: q });
+    untrack(() => {
+      for (const d of readable) {
+        const v = viewOf(d.id);
+        const active = v.active && activeStillMatches(texts[d.id] ?? null, v.active, q) ? v.active : null;
+        if (active === v.active && (!live(d) || $readers[d.id]?.query === q)) continue;
+        const next = { ...v, doc: d.id, query: q, active };
+        play.docViews[d.id] = next;
+        if (live(d)) sendReader(next);
+      }
+    });
   });
 
   function openMatch(m: DocMatch) {

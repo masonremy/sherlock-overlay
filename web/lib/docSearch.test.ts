@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { DocText } from "../../shared/docs";
 import type { MapDef } from "../../shared/schema";
-import { addressIn, matchRects, normalizeText, pageHighlights, searchDocs, viewAround, zoneForAddress } from "./docSearch";
+import { activeStillMatches, addressIn, matchRects, normalizeText, pageHighlights, searchDocs, viewAround, zoneForAddress } from "./docSearch";
 
 const line = (text: string, x = 0.1, y = 0.2, w = 0.4, h = 0.01) => ({
   text,
@@ -77,6 +77,21 @@ describe("pageHighlights", () => {
 
   it("still shows the active match without a query (a result being pointed at)", () => {
     expect(pageHighlights(directory, 2, "", { page: 2, line: 1, start: 0, end: 3 }).active).toHaveLength(1);
+  });
+});
+
+describe("activeStillMatches", () => {
+  const active = { page: 2, line: 1, start: 0, end: 3 }; // "Cox" in "Cox & Co Bank …"
+
+  it("keeps the chosen result while the search still finds it", () => {
+    expect(activeStillMatches(directory, active, "cox")).toBe(true);
+    expect(activeStillMatches(directory, active, " COX ")).toBe(true);
+  });
+
+  it("drops it once the search is cleared or changed", () => {
+    expect(activeStillMatches(directory, active, "")).toBe(false);
+    expect(activeStillMatches(directory, active, "bank")).toBe(false);
+    expect(activeStillMatches(null, active, "cox")).toBe(false);
   });
 });
 
