@@ -89,7 +89,7 @@ describe("theme", () => {
 });
 
 describe("newspapers", () => {
-  const paper = (id: string, date: string | null) => ({ id, file: "np-0123456789abcdef.webp", date, title: "" });
+  const paper = (id: string, date: string | null) => ({ id, file: "B_NEWSPAPER/Journal_01.pdf", date, title: "" });
 
   it("keeps a dated library and points the case at its own paper", () => {
     let s = run(base(), { type: "paper/add", paper: paper("p14", "1889-03-14") });
@@ -99,6 +99,12 @@ describe("newspapers", () => {
     expect(s.case.paperDate).toBe("1889-03-14"); // the case takes its paper's date
     s = run(s, { type: "newspaper/update", patch: { showing: "p12", zoom: { x: 0.1, y: 0.2, w: 0.3, h: 0.2 }, opened: true } });
     expect(s.newspaper).toMatchObject({ showing: "p12", opened: true, zoom: { x: 0.1, y: 0.2, w: 0.3, h: 0.2 } });
+  });
+
+  it("papers are the streamer's PDFs under artifacts/", () => {
+    expect(parseAction({ type: "paper/add", paper: { ...paper("p1", null), file: "np-0123456789abcdef.png" } }).ok).toBe(false);
+    expect(parseAction({ type: "paper/add", paper: { ...paper("p1", null), file: "../secret.pdf" } }).ok).toBe(false);
+    expect(parseAction({ type: "paper/add", paper: { ...paper("p1", null), file: "B_NEWSPAPER_SH_C4/SH_C4_Journal_01_US_HD.pdf" } }).ok).toBe(true);
   });
 
   it("validates", () => {
@@ -183,5 +189,6 @@ describe("overlay options", () => {
     expect(s.overlay).toMatchObject({ showGuides: true, reducedMotion: true });
     s = run(s, { type: "overlay/setFocus", focus: "verdict" });
     expect(s.overlay.focus).toBe("verdict");
+    for (const focus of ["directory", "informants"]) expect(run(s, { type: "overlay/setFocus", focus }).overlay.focus).toBe(focus);
   });
 });

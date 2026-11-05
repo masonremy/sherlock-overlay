@@ -19,6 +19,11 @@ describe("focusAction", () => {
 describe("toolkitItems", () => {
   it("shows the newspaper only once a paper is loaded", () => {
     expect(toolkitItems(null)).toEqual(["map", "notes"]);
-    expect(toolkitItems("paper.png")).toEqual(["map", "newspaper", "notes"]);
+    expect(toolkitItems("paper-01")).toEqual(["map", "newspaper", "notes"]);
+  });
+
+  it("adds the directory and informants after the notes when their PDFs are present", () => {
+    expect(toolkitItems("paper-01", ["directory", "informants"])).toEqual(["map", "newspaper", "notes", "directory", "informants"]);
+    expect(toolkitItems(null, ["informants"])).toEqual(["map", "notes", "informants"]);
   });
 });

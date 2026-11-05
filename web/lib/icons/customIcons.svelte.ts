@@ -1,7 +1,7 @@
 // The streamer's own toolkit icons (icons/map.png and friends), fetched once
 // per page. ToolIcon shows one where it exists, else its built-in drawing.
 
-export const customIcons = $state<{ map?: string; newspaper?: string; notes?: string }>({});
+export const customIcons = $state<Partial<Record<"map" | "newspaper" | "notes" | "directory" | "informants", string>>>({});
 
 let loaded = false;
 

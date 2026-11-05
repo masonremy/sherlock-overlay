@@ -12,7 +12,8 @@
   import MapPanel from "./MapPanel.svelte";
   import NotesTab from "./NotesTab.svelte";
   import OverlayTab from "./OverlayTab.svelte";
-  import PaperTab from "./PaperTab.svelte";
+  import DocsTab from "./DocsTab.svelte";
+  import { loadDocList } from "../lib/docs";
   import { PlayState, TABS } from "./play.svelte";
   import QuickNote from "./QuickNote.svelte";
   import TrailTab from "./TrailTab.svelte";
@@ -24,14 +25,18 @@
 
   // Two modes: Play (record the investigation) and Zones (build map definitions).
   type Mode = "play" | "zones";
-  const TAB_LABELS = { trail: "Trail", notes: "Notes", cast: "Cast", keys: "Keys", paper: "Paper", case: "Case", overlay: "Overlay", layout: "Layout" };
+  const TAB_LABELS = { trail: "Trail", notes: "Notes", cast: "Cast", keys: "Keys", docs: "Documents", case: "Case", overlay: "Overlay", layout: "Layout" };
   const initial = location.hash.slice(1);
   let mode = $state<Mode>(initial === "maps" || initial === "zones" ? "zones" : "play");
-  play.tab = TABS.find((t) => t === initial) ?? "trail";
+  play.tab = TABS.find((t) => t === initial) ?? (initial === "paper" ? "docs" : "trail");
 
   // Focus area / toolkit
   const overlay = $derived($snapshot?.state.overlay);
-  const tools = $derived(toolkitItems($snapshot?.state.newspaper.paperId ?? null));
+  let docKinds = $state<("directory" | "informants")[]>([]);
+  loadDocList().then((docs) => (docKinds = (["directory", "informants"] as const).filter((k) => docs.some((d) => d.kind === k))));
+  const tools = $derived(toolkitItems($snapshot?.state.newspaper.paperId ?? null, docKinds));
+  const SLOTS = ["map", "newspaper", "notes", "directory", "informants"] as const;
+  const TOOL_NAMES: Record<ToolItem, string> = { map: "Map", newspaper: "Newspaper", notes: "Notes", directory: "Directory", informants: "Informants" };
   function toggleFocus(item: ToolItem) {
     if (!overlay || !tools.includes(item)) return;
     const action = focusAction(overlay.focus, item);
@@ -61,10 +66,10 @@
 
 
   function onKey(e: KeyboardEvent) {
-    // Ctrl+1/2/3 put the map, newspaper or notes in the focus area (again to dismiss).
-    if ((e.ctrlKey || e.metaKey) && !e.altKey && ["1", "2", "3"].includes(e.key) && mode === "play") {
+    // Ctrl+1–5 put the map, newspaper, notes, directory or informants in the focus area (again to dismiss).
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && ["1", "2", "3", "4", "5"].includes(e.key) && mode === "play") {
       e.preventDefault();
-      toggleFocus((["map", "newspaper", "notes"] as const)[Number(e.key) - 1]);
+      toggleFocus(SLOTS[Number(e.key) - 1]);
       return;
     }
     // Single-letter keys only when no text field has focus.
@@ -159,8 +164,8 @@
             <CastTab {conn} {play} onAdd={() => (charForm = { id: null })} onEdit={(id) => (charForm = { id })} />
           {:else if play.tab === "keys"}
             <KeysTab {conn} />
-          {:else if play.tab === "paper"}
-            <PaperTab {conn} onToggle={() => toggleFocus("newspaper")} />
+          {:else if play.tab === "docs"}
+            <DocsTab {conn} {play} onToggle={toggleFocus} />
           {:else if play.tab === "case"}
             <CaseTab {conn} />
           {:else if play.tab === "layout"}
@@ -187,12 +192,12 @@
     <button onclick={() => (showHistory = !showHistory)} class:on={showHistory}>History</button>
     {#if overlay}
       <span class="toolkit" role="group" aria-label="Focus area">
-        {#each tools as item, i (item)}
+        {#each tools as item (item)}
           <button
             type="button"
             class="tool"
             class:on={overlay.focus === item}
-            title="{item === 'map' ? 'Map' : item === 'notes' ? 'Notes' : 'Newspaper'} in the focus area (Ctrl+{i === 0 ? 1 : item === 'notes' ? 3 : 2})"
+            title="{TOOL_NAMES[item]} in the focus area (Ctrl+{SLOTS.indexOf(item) + 1})"
             onclick={() => toggleFocus(item)}
           >
             <ToolIcon kind={item} size={24} state={overlay.focus === item ? "open" : "folded"} />

@@ -25,6 +25,12 @@ describe("listIcons", () => {
     expect(icons.notes).toMatch(/^\/icons\/notes\.svg\?v=\d+$/);
   });
 
+  it("covers the directory and informants too", async () => {
+    await writeFile(join(dir, "directory.png"), "x");
+    await writeFile(join(dir, "Informants.PNG"), "x");
+    expect(Object.keys(await listIcons(dir)).sort()).toEqual(["directory", "informants"]);
+  });
+
   it("returns nothing when the folder is missing or empty", async () => {
     expect(await listIcons(join(dir, "nope"))).toEqual({});
     expect(await listIcons(dir)).toEqual({});

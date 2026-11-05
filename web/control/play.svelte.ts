@@ -2,6 +2,7 @@
 // syncs: the panel's private browsing never reaches the overlay (except through
 // mirror mode, which streams the view separately).
 
+import type { ReaderView } from "../../shared/protocol";
 import type { NoteFilter } from "../lib/notes";
 
 export type RecordTarget =
@@ -9,8 +10,8 @@ export type RecordTarget =
   | { kind: "insert"; index: number }
   | { kind: "replace"; stepId: string };
 
-export type Tab = "trail" | "cast" | "keys" | "notes" | "paper" | "case" | "overlay" | "layout";
-export const TABS: Tab[] = ["trail", "notes", "cast", "keys", "paper", "case", "overlay", "layout"];
+export type Tab = "trail" | "cast" | "keys" | "notes" | "docs" | "case" | "overlay" | "layout";
+export const TABS: Tab[] = ["trail", "notes", "cast", "keys", "docs", "case", "overlay", "layout"];
 
 export class PlayState {
   /** Tab under the map. */
@@ -23,6 +24,11 @@ export class PlayState {
   suggestStepLinks = $state(true);
   /** Bumped to focus the quick-note box (N). */
   quickNoteFocus = $state(0);
+
+  /** Documents tab: the document in the preview, each one's place in it, and the search. */
+  docId = $state<string | null>(null);
+  docViews = $state<Record<string, ReaderView>>({});
+  docQuery = $state("");
 
   /** Map shown in the panel. */
   mapId = $state<string | null>(null);

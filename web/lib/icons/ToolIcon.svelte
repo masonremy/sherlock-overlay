@@ -1,11 +1,13 @@
 <script lang="ts">
+  import type { ToolItem } from "../focus";
   import { customIcons, loadCustomIcons } from "./customIcons.svelte";
-  // Toolkit icons: folded map, folded newspaper, notebook. Ink line, 2 px
+  // Toolkit icons: folded map, folded newspaper, notebook, directory (thumb-
+  // indexed book) and informants (a calling card with a bust; placeholders). Ink line, 2 px
   // stroke at 48 px, sepia fill; "open" is the lit state of the item in focus.
   // A wax dot marks something unseen.
 
   interface Props {
-    kind: "map" | "newspaper" | "notes";
+    kind: ToolItem;
     size?: number;
     state?: "folded" | "open";
     dot?: boolean;
@@ -48,6 +50,33 @@
       <path class="line" d="M11 24 H37" />
       <path class="accent" d="M15 14 H33" />
       <path class="faint" d="M15 18 H29 M15 29 H33 M15 33 H27" />
+    {/if}
+  {:else if kind === "directory"}
+    {#if open}
+      <path class="fill" d="M4 10 C11 8 18 9 24 12 C30 9 37 8 44 10 V40 C37 38 30 39 24 42 C18 39 11 38 4 40 Z" />
+      <path class="line" d="M24 12 V42" />
+      <path class="faint" d="M8 17 H14 M8 21 H20 M8 25 H20 M8 29 H20 M8 33 H17 M28 17 H40 M28 21 H40 M28 25 H40 M28 29 H36" />
+      <path class="accent" d="M44 14 V20 M44 24 V30" />
+    {:else}
+      <rect class="fill" x="10" y="6" width="26" height="36" rx="2" />
+      <path class="line" d="M15 6 V42" />
+      <path class="tab" d="M36 9 H40 V15 H36 M36 18 H40 V24 H36 M36 27 H40 V33 H36" />
+      <path class="accent" d="M20 14 H31" />
+      <path class="faint" d="M20 19 H29 M20 23 H31 M20 27 H27" />
+    {/if}
+  {:else if kind === "informants"}
+    {#if open}
+      <rect class="fill" x="4" y="10" width="40" height="28" rx="2" />
+      <circle class="line" cx="15" cy="21" r="4" />
+      <path class="line" d="M8 32 C9 27 21 27 22 32" />
+      <path class="faint" d="M27 18 H39 M27 23 H39 M27 28 H35" />
+      <path class="accent" d="M8 14 H40" />
+    {:else}
+      <rect class="fill" x="8" y="12" width="32" height="24" rx="2" />
+      <circle class="line" cx="18" cy="21" r="3.5" />
+      <path class="line" d="M12 31 C13 27 23 27 24 31" />
+      <path class="faint" d="M28 19 H35 M28 24 H35" />
+      <path class="accent" d="M12 15.5 H36" />
     {/if}
   {:else if open}
     <path class="fill" d="M4 12 C11 9 18 10 24 13 C30 10 37 9 44 12 V40 C37 37 30 38 24 41 C18 38 11 37 4 40 Z" />
@@ -125,6 +154,12 @@
     stroke: var(--wax);
     stroke-width: 2;
     stroke-linecap: round;
+  }
+  .tab {
+    fill: var(--wax);
+    stroke: var(--ink);
+    stroke-width: 1.5;
+    stroke-linejoin: round;
   }
   .seal {
     fill: var(--wax);

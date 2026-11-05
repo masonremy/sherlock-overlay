@@ -93,7 +93,7 @@ Two files: a **map definition** reused across cases, and a **case state** per pl
     "cast":      { "x": 0,   "y": 60,  "w": 360,  "h": 780, "z": 1, "visible": true },
     "keys":      { "x": 0,   "y": 840, "w": 360,  "h": 220, "z": 1, "visible": true },
     "notes":     { "x": 820, "y": 840, "w": 1100, "h": 220, "z": 1, "visible": true },
-    "toolkit":   { "x": 470, "y": 980, "w": 240,  "h": 70,  "z": 2, "visible": true, "items": ["map", "newspaper", "notes"] }
+    "toolkit":   { "x": 400, "y": 980, "w": 400,  "h": 70,  "z": 2, "visible": true, "items": ["map", "newspaper", "notes", "directory", "informants"] }
   }
 }
 ```
@@ -135,10 +135,10 @@ The Header component becomes a full-width title bar across the top of the overla
 
 ### Focus area & toolkit
 
-The overlay's largest component is a **focus area** that shows one thing at a time: the map, the newspaper, or expanded notes. The **toolkit bar** holds an icon for each; selecting one brings its full version into the focus area.
+The overlay's largest component is a **focus area** that shows one thing at a time: the map, the newspaper, expanded notes, the directory or the informants. The **toolkit bar** holds an icon for each; selecting one brings its full version into the focus area.
 
-- **Icons:** Map (folded map), Newspaper (folded paper), Notes (notebook). The active one is lit; the others sit folded. A dot marks unseen newspaper pages or new notes.
-- **Switching:** panel toolkit buttons or `Ctrl+1` / `Ctrl+2` / `Ctrl+3`. The outgoing item folds down into its icon and the incoming one unfolds out of its icon (\~500 ms).
+- **Icons:** Map (folded map), Newspaper (folded paper), Notes (notebook), Directory (thumb-indexed book) and Informants (calling card); the last two appear when their PDFs are in `artifacts/`. The active one is lit; the others sit folded. A dot marks unseen newspaper pages or new notes. Icons shrink to fit the toolkit box, and labels drop out when there's no room.
+- **Switching:** panel toolkit buttons or `Ctrl+1` to `Ctrl+5` (map, newspaper, notes, directory, informants). The outgoing item folds down into its icon and the incoming one unfolds out of its icon (\~500 ms).
 - **Default and return:** the map is the default. Dismissing the newspaper or contracting notes returns the focus area to whatever was there before, usually the map.
 - **Recording still works off-focus:** the streamer can record a move while the newspaper or notes are in focus; the map shows the new pin when it comes back.
 - **Placement:** the focus area is a normal layout component, so its position, size and layer are set in the layout editor. It can be sized to overlap other components when the streamer wants a big view.
@@ -238,16 +238,17 @@ Notes have two states, switched by an **Expand / Contract** button in the panel'
 
 **Evidence cards.** Notes tagged `clue` can be shown as styled evidence cards: a paper slip with a typed-label look, the step it came from ("from 13 SW, step 4") and any linked character portraits. The panel has a **Show card** button that puts one card in the focus area for a moment of emphasis, and the expanded notes view can lay clues out as a card wall. The text on every card is the streamer's own summary; the app never ships or fetches case text.
 
-### Newspaper
+### Documents: newspapers, directory, informants
 
-Each case has its own newspaper. It rests as a folded-paper icon in the toolkit bar and unfolds into the focus area when selected.
+The box's PDFs (from the streamer's own copy, never bundled) go in `artifacts/`, in any folder layout. At startup the server finds them, recognises each by name (`Journal`/`newspaper`, `Annuaire`/`directory`, `informateur`/`informant`) and indexes their text layer with pdf.js: lines with page positions, cached in `artifacts/.index/`. The pages themselves are drawn by pdf.js in the browser, so text stays sharp at any zoom.
 
-- **Load:** one image per case: a screenshot or a one-page PDF (rasterised on upload, same as maps), stored as `cases/<id>/assets/paper.png`.
-- **Earlier papers:** the rules let players use the case's paper plus earlier-dated papers from the same set. Papers are stored in a library with their date, and the open newspaper shows a small shelf to flip to any earlier one. The case's own paper is the default.
-- **Open:** the Newspaper toolkit button or `Ctrl+2`. The paper unfolds out of its icon into the focus area, replacing the map there.
-- **While open:** the panel shows a thumbnail where the streamer can drag a box to zoom onto one article, or reset to the whole page.
-- **Dismiss:** the same button, `Ctrl+2` again, or `Esc`. The paper folds back into its icon and the focus area returns to what was there before. Zoom is remembered for next time.
-- **Cue:** a small dot on the icon until the paper has been opened once this case.
+- **Newspapers:** the paper library follows the newspaper PDFs: one entry per PDF, dated from its masthead. Dates and titles the streamer edits are kept; entries whose PDF is gone drop out. The case picks its own paper; the rules allow it plus earlier-dated papers (the shelf). Later papers are never shown or searched.
+- **Directory:** the alphabetical part and the list by trade. Big letters and trade headings become a "Jump to…" list (A–Z, then trades), each landing on its heading.
+- **Informants:** the list of informants and their addresses.
+- **Documents tab (panel):** one search across the shelf, the directory and the informants (or just the open document). Results are grouped by document with the matching line; choosing one zooms the preview onto it, with every match highlighted and the chosen one marked. A directory line ending in an address ("22 WC") offers *Show on the map* when that address is zoned. The preview scrolls (wheel), zooms (Ctrl+wheel) and pans (drag); pages turn with ‹ ›.
+- **On stream:** *Show on stream*, the toolkit, or `Ctrl+2`/`Ctrl+4`/`Ctrl+5`. The document unfolds into the focus area with a caption (title, search, page). While it's on stream the overlay follows the preview live (page, visible area, highlights); before that the preview is private. The view is a transient message like mirror mode: not in undo history, forgotten on restart (the overlay then shows page 1).
+- **Dismiss:** the same button or hotkey again. The focus area returns to what was there before.
+- **Cue:** a small dot on the newspaper icon until the paper has been opened once this case.
 
 ### Informants, timesheet & campaigns
 
@@ -264,7 +265,7 @@ The overlay is one 1920×1080 page whose components the streamer positions, size
 
 | Panel | Default position | Size (px) | Content |
 | --- | --- | --- | --- |
-| Focus area | right | 1100 × 780 | Map (default), newspaper or expanded notes; map shows pins, path, "Elsewhere" strip |
+| Focus area | right | 1100 × 780 | Map (default), newspaper, expanded notes, directory or informants; map shows pins, path, "Elsewhere" strip |
 | Cast | left column | 360 × 780 | Portrait cards, status rings |
 | Keys | bottom left | 360 × 220 | Letter tile grid |
 | Notes | bottom right | 1100 × 220 | Compact notes: pinned, scrollable, read-only |
@@ -327,6 +328,8 @@ All UI art is hand-built SVG, generated in code during implementation; only char
 | Folded map | Toolkit | folded / open (lit) |
 | Folded newspaper | Toolkit | folded / open, unread dot |
 | Notebook | Toolkit | closed / open, new-note dot |
+| Thumb-indexed book | Toolkit (directory) | closed / open |
+| Calling card with bust | Toolkit (informants) | folded / open |
 | Wax-seal pin | Map trail | numbered, current (pulse), hollow (re-read / dead end) |
 | Letter tile | Letter keys | locked (padlock) / unlocked (gold edge) |
 | Evidence slip | Evidence cards | — |
@@ -374,7 +377,7 @@ The panel is built for a narrow OBS dock (\~420 px wide) first, and expands to a
 | `H` | Toggle hide-all on overlay |
 | `A`–`Z` with `Alt` | Toggle that letter key |
 
-Also: `Enter` records the selected zone, `0` resets the map zoom, `Ctrl+1` / `Ctrl+2` / `Ctrl+3` put the map, newspaper or notes in the focus area, `E` expands or contracts notes, `Esc` returns the focus area to the previous item or clears the map selection.
+Also: `Enter` records the selected zone, `0` resets the map zoom, `Ctrl+1` to `Ctrl+5` put the map, newspaper, notes, directory or informants in the focus area, `E` expands or contracts notes, `Esc` returns the focus area to the previous item or clears the map selection.
 
 ### Live editing
 

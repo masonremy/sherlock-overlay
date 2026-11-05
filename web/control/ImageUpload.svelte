@@ -17,7 +17,7 @@
     onDone: (img: UploadedImage) => void;
     prompt?: string;
     /** Where the image is stored: maps/ or papers/. */
-    route?: "maps" | "papers";
+    route?: "maps";
   }
 
   let { onDone, prompt = "Map image", route = "maps" }: Props = $props();

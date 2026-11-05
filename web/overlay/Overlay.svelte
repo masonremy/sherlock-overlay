@@ -20,7 +20,9 @@
   import Intro from "./Intro.svelte";
   import KeyGrid from "./KeyGrid.svelte";
   import MapFocus from "./MapFocus.svelte";
-  import NewspaperFocus from "./NewspaperFocus.svelte";
+  import DocumentFocus from "./DocumentFocus.svelte";
+  import { loadDocList } from "../lib/docs";
+  import type { DocInfo } from "../../shared/docs";
   import NotesFocus from "./NotesFocus.svelte";
   import PaperFilters from "../lib/PaperFilters.svelte";
   import TitleBar from "./TitleBar.svelte";
@@ -29,7 +31,7 @@
 
   // Read-only: the overlay never sends actions. It shows the committed trail,
   // never the panel's staged edits.
-  const { snapshot, mirror, cue, notesScroll } = connect();
+  const { snapshot, mirror, cue, notesScroll, readers } = connect();
 
   // --- URL options (one OBS source per layer, a fixed layout per scene…) ------
   const params = new URLSearchParams(location.search);
@@ -109,6 +111,13 @@
   const shelf = $derived(app ? shelfPapers(app.papers, app.newspaper.paperId, day) : []);
   const openPaper = $derived(app ? (app.papers[app.newspaper.showing ?? ""] ?? app.papers[app.newspaper.paperId ?? ""] ?? null) : null);
 
+  // --- Documents (artifacts/ PDFs) -------------------------------------------------------
+  let docs = $state<DocInfo[]>([]);
+  loadDocList().then((d) => (docs = d));
+  const docOf = (kind: "directory" | "informants") => docs.find((d) => d.kind === kind) ?? null;
+  const zoomRect = (z: { x: number; y: number; w: number; h: number } | null): [number, number, number, number] | null =>
+    z ? [z.x, z.y, z.x + z.w, z.y + z.h] : null;
+
   // Animations that replay state (key flips) only run after the first snapshot.
   let settled = $state(false);
   $effect(() => {
@@ -175,7 +184,12 @@
 
   // --- Focus area and toolkit ------------------------------------------------
   const onStream = $derived(app?.notes.filter(isOnStream) ?? []);
-  const tools = $derived(toolkitItems(app?.newspaper.paperId ?? null));
+  const tools = $derived(
+    toolkitItems(
+      app?.newspaper.paperId ?? null,
+      (["directory", "informants"] as const).filter((k) => docOf(k)),
+    ),
+  );
   const cardNote = $derived(app?.notes.find((n) => n.id === app.overlay.cardNoteId) ?? null);
   // What the focus area actually draws: a hidden map or a missing paper show nothing.
   const focusShown = $derived.by((): FocusItem | null => {
@@ -183,6 +197,7 @@
     if (f === "map") return app?.overlay.hideMap ? null : "map";
     if (f === "newspaper") return openPaper ? "newspaper" : null;
     if (f === "card") return cardNote ? "card" : null;
+    if (f === "directory" || f === "informants") return docOf(f) ? f : null;
     return f;
   });
 
@@ -197,7 +212,10 @@
   }
 
   // Items fold into, and unfold out of, their toolkit icon (the verdict just rises).
-  const TOOL_ICON = 40;
+  // Icons shrink to fit the toolkit box; labels go when there's no room for them.
+  const toolW = $derived((L.toolkit.w - 16) / Math.max(1, tools.length));
+  const toolLabels = $derived(toolW >= 78 && L.toolkit.h >= 58);
+  const TOOL_ICON = $derived(Math.max(18, Math.min(40, toolW - 14, L.toolkit.h - (toolLabels ? 26 : 10))));
   function foldOrigin(item: FocusItem): string {
     const t = L.toolkit;
     const i = tools.indexOf(item as never);
@@ -290,7 +308,28 @@
             in:fold={{ origin: foldOrigin("newspaper"), delay: 180 }}
             out:fold={{ origin: foldOrigin("newspaper") }}
           >
-            <NewspaperFocus paper={openPaper} {shelf} zoom={app.newspaper.zoom} width={L.focus.w - 2 * PAD} height={L.focus.h - 2 * PAD} />
+            <DocumentFocus
+              id={openPaper.id}
+              file={openPaper.file}
+              title={openPaper.title || "Newspaper"}
+              pages={docs.find((d) => d.id === openPaper.id)?.pages ?? 1}
+              view={$readers[openPaper.id]}
+              fallback={zoomRect(app.newspaper.zoom)}
+              {shelf}
+              width={L.focus.w - 2 * PAD}
+              height={L.focus.h - 2 * PAD}
+            />
+          </section>
+        {:else if (focusShown === "directory" || focusShown === "informants") && docOf(focusShown)}
+          {@const d = docOf(focusShown)!}
+          <section
+            class="panel paper focus"
+            style="{box('focus')};{vars('focus')}"
+            style:padding="{PAD}px"
+            in:fold={{ origin: foldOrigin(d.kind as FocusItem), delay: 180 }}
+            out:fold={{ origin: foldOrigin(d.kind as FocusItem) }}
+          >
+            <DocumentFocus id={d.id} file={d.file} title={d.title} pages={d.pages} view={$readers[d.id]} width={L.focus.w - 2 * PAD} height={L.focus.h - 2 * PAD} />
           </section>
         {:else if focusShown === "notes"}
           <section
@@ -343,6 +382,7 @@
           focus={app.overlay.focus}
           dots={{ notes: unseenNotes, newspaper: !!app.newspaper.paperId && !app.newspaper.opened }}
           iconSize={TOOL_ICON}
+          labels={toolLabels}
         />
       </section>
     {/if}

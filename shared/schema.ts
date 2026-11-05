@@ -10,7 +10,7 @@ const nullableString = z.string().nullable().default(null);
 export const StepKind = z.enum(["lead", "free", "reread", "deadEnd"]);
 export const CharacterStatus = z.enum(["suspect", "witness", "ally", "victim", "cleared"]);
 export const NoteTag = z.enum(["clue", "question", "theory"]);
-export const FocusItem = z.enum(["map", "newspaper", "notes", "verdict", "card"]);
+export const FocusItem = z.enum(["map", "newspaper", "notes", "verdict", "card", "directory", "informants"]);
 export const MapView = z.enum(["full", "auto-frame", "mirror"]);
 
 export const PlaceRef = z.object({ mapId: id, zoneId: id });
@@ -239,7 +239,8 @@ export type LibraryPortrait = z.infer<typeof LibraryPortrait>;
 export const PaperId = z.string().regex(/^[A-Za-z0-9_-]{1,40}$/, "Paper id: letters, digits, - and _");
 export const Paper = z.object({
   id: PaperId,
-  file: z.string().regex(/^np-[0-9a-f]{16}\.(png|jpg|webp)$/, "Not a newspaper file name"),
+  /** The newspaper PDF, as a path under artifacts/ (forward slashes, no ".."). */
+  file: z.string().regex(/^(?!.*\.\.)[A-Za-z0-9_][A-Za-z0-9 _.\-/]*\.pdf$/i, "Not a PDF under artifacts/"),
   /** Date printed on the paper; earlier-dated papers are fair game for later cases. */
   date: IsoDate.nullable().default(null),
   title: z.string().trim().max(80).default(""),

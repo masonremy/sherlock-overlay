@@ -10,17 +10,19 @@
     dots: Partial<Record<ToolItem, boolean>>;
     /** Icon size in px; the overlay computes where each icon sits for fold animations. */
     iconSize: number;
+    /** Names under the icons (off when the box is too small for them). */
+    labels?: boolean;
   }
 
-  let { items, focus, dots, iconSize }: Props = $props();
-  const LABELS: Record<ToolItem, string> = { map: "Map", newspaper: "Paper", notes: "Notes" };
+  let { items, focus, dots, iconSize, labels = true }: Props = $props();
+  const LABELS: Record<ToolItem, string> = { map: "Map", newspaper: "Paper", notes: "Notes", directory: "Directory", informants: "Informants" };
 </script>
 
 <div class="toolkit">
   {#each items as item (item)}
     <div class="tool" class:on={item === focus}>
       <ToolIcon kind={item} size={iconSize} state={item === focus ? "open" : "folded"} dot={!!dots[item]} />
-      <span>{LABELS[item]}</span>
+      {#if labels}<span>{LABELS[item]}</span>{/if}
     </div>
   {/each}
 </div>
@@ -36,6 +38,8 @@
     box-sizing: border-box;
   }
   .tool {
+    flex: 1 1 0;
+    min-width: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -55,5 +59,6 @@
     color: var(--ink);
     text-transform: uppercase;
     letter-spacing: 0.08em;
+    white-space: nowrap;
   }
 </style>

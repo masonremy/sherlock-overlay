@@ -3,7 +3,9 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { WebSocketServer, WebSocket } from "ws";
 import { DEFAULT_PORT, WS_PATH } from "../shared/constants";
-import { ClientMessage, type MirrorView, type ServerMessage } from "../shared/protocol";
+import { ClientMessage, type MirrorView, type ReaderView, type ServerMessage } from "../shared/protocol";
+import { loadDocs } from "./docs";
+import { reconcilePapers } from "./docText";
 import { downloadGoogleFont, FontError, listFonts, saveUploadedFont } from "./fonts";
 import { listIcons } from "./icons";
 import { snapshotOverlay } from "./snapshot";
@@ -23,6 +25,7 @@ const portraitsDir = resolve(dataDir, "portraits");
 const papersDir = resolve(dataDir, "papers");
 const fontsDir = resolve(dataDir, "fonts");
 const iconsDir = resolve(dataDir, "icons");
+const artifactsDir = resolve(dataDir, "artifacts");
 // Reopen the case that was open last, unless CASE says otherwise.
 const lastCaseFile = resolve(casesDir, ".last-case");
 const caseId = process.env.CASE ?? ((await readFile(lastCaseFile, "utf8").catch(() => "")).trim() || "default");
@@ -32,6 +35,12 @@ const app = Fastify({ logger: { level: "warn" } });
 const store = await AppStore.load({ casesDir, mapsDir, portraitsDir, papersDir, caseId });
 await mkdir(fontsDir, { recursive: true });
 console.log(`case "${caseId}" loaded at rev ${store.state.rev}; ${Object.keys(store.state.maps).length} map(s) in library`);
+
+// The streamer's PDFs: indexed once (cached), and the paper library follows the newspapers.
+await mkdir(artifactsDir, { recursive: true });
+const library = await loadDocs(artifactsDir);
+store.adoptPapers(reconcilePapers(store.state.papers, library.docs.filter((d) => d.kind === "newspaper")));
+console.log(`${library.docs.length} document(s) in artifacts/: ${library.docs.map((d) => d.id).join(", ") || "none"}`);
 
 // --- WebSocket sync ---------------------------------------------------------
 
@@ -48,9 +57,10 @@ function snapshot(): ServerMessage {
   return { type: "snapshot", rev: store.state.rev, caseId: store.caseId, state: store.state, history: store.timeline };
 }
 
-/** Latest mirrored panel view and notes scroll; kept so a reconnecting overlay picks them up. */
+/** Latest mirrored panel view, notes scroll and document views; kept so a reconnecting overlay picks them up. */
 let mirror: MirrorView | null = null;
 let notesScroll = 0;
+const readerViews = new Map<string, ReaderView>();
 
 function send(ws: WebSocket, msg: ServerMessage) {
   if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg));
@@ -65,6 +75,7 @@ wss.on("connection", (ws) => {
   send(ws, snapshot());
   if (mirror) send(ws, { type: "mirror", view: mirror });
   send(ws, { type: "notesScroll", value: notesScroll });
+  for (const view of readerViews.values()) send(ws, { type: "reader", view });
   ws.on("message", (data) => {
     let parsed;
     try {
@@ -84,6 +95,9 @@ wss.on("connection", (ws) => {
     } else if (msg.type === "notesScroll") {
       notesScroll = msg.value;
       for (const client of wss.clients) if (client !== ws) send(client, { type: "notesScroll", value: notesScroll });
+    } else if (msg.type === "reader") {
+      readerViews.set(msg.view.doc, msg.view);
+      for (const client of wss.clients) if (client !== ws) send(client, { type: "reader", view: msg.view });
     } else if (msg.type === "cue") {
       for (const client of wss.clients) if (client !== ws) send(client, { type: "cue", cue: msg.cue });
     } else {
@@ -109,7 +123,6 @@ const fastifyStatic = (await import("@fastify/static")).default;
 for (const { route, dir, prefix } of [
   { route: "maps", dir: mapsDir, prefix: "img" },
   { route: "portraits", dir: portraitsDir, prefix: "p" },
-  { route: "papers", dir: papersDir, prefix: "np" },
 ]) {
   app.post(`/api/${route}/images`, async (req, reply) => {
     if (!Buffer.isBuffer(req.body)) return reply.code(415).send({ error: "Send the image bytes as the request body" });
@@ -141,6 +154,7 @@ async function openedCase() {
   // Transient views belong to the case that was open.
   mirror = null;
   notesScroll = 0;
+  readerViews.clear();
   await writeFile(lastCaseFile, store.caseId);
 }
 
@@ -217,6 +231,23 @@ await app.register(fastifyStatic, {
   decorateReply: false,
   index: false,
   allowedPath: (path) => /\.(ttf|otf|woff2?)$/i.test(path),
+});
+
+// --- Documents (the streamer's PDFs in artifacts/) -------------------------------
+
+app.get("/api/docs", async () => library.docs);
+
+app.get<{ Params: { id: string } }>("/api/docs/:id/text", async (req, reply) => {
+  const text = library.text.get(req.params.id);
+  return text ?? reply.code(404).send({ error: "No such document" });
+});
+
+await app.register(fastifyStatic, {
+  root: artifactsDir,
+  prefix: "/artifacts/",
+  decorateReply: false,
+  index: false,
+  allowedPath: (path) => /\.pdf$/i.test(path) && !path.includes("/."),
 });
 
 // --- Custom toolkit icons ------------------------------------------------------

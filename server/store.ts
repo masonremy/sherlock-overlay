@@ -176,6 +176,24 @@ export class AppStore {
     await this.saving;
   }
 
+  /**
+   * Startup only: replaces the paper library with the one found in artifacts/
+   * (a load, not an action, so it isn't in undo history), dropping the case's
+   * paper references if their paper is gone. Saved like any other change.
+   */
+  adoptPapers(papers: AppState["papers"]): void {
+    const s = this.state;
+    const keep = (id: string | null) => (id && papers[id] ? id : null);
+    const state: AppState = {
+      ...s,
+      papers,
+      newspaper: { ...s.newspaper, paperId: keep(s.newspaper.paperId), showing: keep(s.newspaper.showing) },
+    };
+    this.history = { ...this.history, present: { ...this.history.present, state } };
+    this.scheduleSave();
+    for (const fn of this.listeners) fn(state);
+  }
+
   // --- Cases ------------------------------------------------------------------
 
   async listCases(): Promise<CaseSummary[]> {

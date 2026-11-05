@@ -5,9 +5,9 @@
 import { readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 
-export const ICON_ITEMS = ["map", "newspaper", "notes"] as const;
+export const ICON_ITEMS = ["map", "newspaper", "notes", "directory", "informants"] as const;
 export type IconItem = (typeof ICON_ITEMS)[number];
-const FILE = /^(map|newspaper|notes)\.(png|jpe?g|webp|svg)$/i;
+const FILE = /^(map|newspaper|notes|directory|informants)\.(png|jpe?g|webp|svg)$/i;
 
 /** URL per item that has a custom icon; ?v changes when the file does, so a replaced image shows up. */
 export async function listIcons(dir: string): Promise<Partial<Record<IconItem, string>>> {

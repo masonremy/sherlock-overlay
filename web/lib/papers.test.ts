@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Paper } from "../../shared/schema";
 import { shelfPapers } from "./papers";
 
-const p = (id: string, date: string | null): Paper => ({ id, file: "np-0123456789abcdef.webp", date, title: "" });
+const p = (id: string, date: string | null): Paper => ({ id, file: "B_NEWSPAPER/Journal_01.pdf", date, title: "" });
 const library = Object.fromEntries([p("p10", "1889-03-10"), p("p14", "1889-03-14"), p("p15", "1889-03-15"), p("p16", "1889-03-16"), p("x", null)].map((x) => [x.id, x]));
 
 describe("shelfPapers", () => {

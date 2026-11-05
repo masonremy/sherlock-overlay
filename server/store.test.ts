@@ -258,7 +258,7 @@ describe("AppStore: layouts, theme and papers", () => {
     const a = await load();
     a.dispatch({ type: "layout/save", layout: { ...a.state.layouts.full, id: "corner", name: "Corner" } });
     a.dispatch({ type: "theme/set", theme: { display: "Special Elite", body: "Lato", components: {} } });
-    a.dispatch({ type: "paper/add", paper: { id: "p1", file: "np-0123456789abcdef.webp", date: "1889-03-14", title: "" } });
+    a.dispatch({ type: "paper/add", paper: { id: "p1", file: "B_NEWSPAPER/Journal_01.pdf", date: "1889-03-14", title: "" } });
     await a.flush();
     expect(Object.keys(JSON.parse(await readFile(join(root, "layouts.json"), "utf8")))).toEqual(["full", "corner"]);
     expect(JSON.parse(await readFile(join(root, "theme.json"), "utf8")).display).toBe("Special Elite");
@@ -268,6 +268,33 @@ describe("AppStore: layouts, theme and papers", () => {
     expect(Object.keys(b.state.layouts)).toEqual(["full", "corner"]);
     expect(b.state.theme.display).toBe("Special Elite");
     expect(b.state.papers.p1.date).toBe("1889-03-14");
+  });
+});
+
+describe("AppStore: adopting the paper library at startup", () => {
+  const pdf = (id: string, date: string) => ({ id, file: `B_NEWSPAPER/Journal_${id.slice(-2)}.pdf`, date, title: `Newspaper ${id.slice(-2)}` });
+
+  it("replaces the library without an undo entry, saves it, and drops a case paper that's gone", async () => {
+    const store = await load();
+    store.dispatch({ type: "paper/add", paper: { id: "old", file: "B_NEWSPAPER/Old.pdf", date: null, title: "" } });
+    store.dispatch({ type: "newspaper/update", patch: { paperId: "old" } });
+    const before = store.state.rev;
+    const fresh = await load(); // a restart: history starts clean
+    fresh.adoptPapers({ "paper-01": pdf("paper-01", "1885-11-19") });
+    expect(Object.keys(fresh.state.papers)).toEqual(["paper-01"]);
+    expect(fresh.state.newspaper.paperId).toBeNull();
+    expect(fresh.canUndo).toBe(false);
+    await fresh.flush();
+    expect(Object.keys(JSON.parse(await readFile(join(root, "papers", "library.json"), "utf8")))).toEqual(["paper-01"]);
+    expect(before).toBeGreaterThan(0);
+  });
+
+  it("keeps the case's paper when it's still in the library", async () => {
+    const store = await load();
+    store.adoptPapers({ "paper-01": pdf("paper-01", "1885-11-19") });
+    store.dispatch({ type: "newspaper/update", patch: { paperId: "paper-01" } });
+    store.adoptPapers({ "paper-01": pdf("paper-01", "1885-11-19"), "paper-02": pdf("paper-02", "1885-11-21") });
+    expect(store.state.newspaper.paperId).toBe("paper-01");
   });
 });
 

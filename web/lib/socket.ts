@@ -1,6 +1,6 @@
 import { writable, type Readable } from "svelte/store";
 import { WS_PATH } from "../../shared/constants";
-import type { ClientMessage, Cue, MirrorView, ServerMessage } from "../../shared/protocol";
+import type { ClientMessage, Cue, MirrorView, ReaderView, ServerMessage } from "../../shared/protocol";
 import type { AppState } from "../../shared/schema";
 import type { ActionInput } from "../../shared/actions";
 import type { Timeline } from "../../shared/history";
@@ -38,6 +38,9 @@ export interface Connection {
   sendMirror(view: MirrorView): void;
   sendCue(cue: Cue): void;
   sendNotesScroll(value: number): void;
+  /** What each document shows on stream (page, visible area, highlight), by document id. */
+  readers: Readable<Record<string, ReaderView>>;
+  sendReader(view: ReaderView): void;
 }
 
 export function connect(): Connection {
@@ -48,6 +51,7 @@ export function connect(): Connection {
   const cue = writable<{ cue: Cue; seq: number } | null>(null);
   let cueSeq = 0;
   const notesScroll = writable(0);
+  const readers = writable<Record<string, ReaderView>>({});
   let ws: WebSocket | null = null;
   let retryMs = 500;
   let latestRev = -1;
@@ -78,6 +82,10 @@ export function connect(): Connection {
       }
       if (msg.type === "cue") {
         cue.set({ cue: msg.cue, seq: ++cueSeq });
+        return;
+      }
+      if (msg.type === "reader") {
+        readers.update((all) => ({ ...all, [msg.view.doc]: msg.view }));
         return;
       }
       // A restarted server may reload an older rev from disk; accept it after a
@@ -123,6 +131,11 @@ export function connect(): Connection {
     jump: (offset) => send({ type: "jump", offset }),
     sendMirror: (view) => send({ type: "mirror", view }),
     sendCue: (c) => send({ type: "cue", cue: c }),
+    readers,
+    sendReader: (view) => {
+      readers.update((all) => ({ ...all, [view.doc]: view }));
+      send({ type: "reader", view });
+    },
     sendNotesScroll: (value) => {
       notesScroll.set(value);
       send({ type: "notesScroll", value });

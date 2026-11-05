@@ -37,5 +37,5 @@ export const DEFAULT_LAYOUT = {
   cast: { x: 0, y: 60, w: 360, h: 780, z: 1, visible: true },
   keys: { x: 0, y: 840, w: 360, h: 220, z: 1, visible: true },
   notes: { x: 820, y: 840, w: 1100, h: 220, z: 1, visible: true },
-  toolkit: { x: 470, y: 980, w: 240, h: 70, z: 2, visible: true },
+  toolkit: { x: 400, y: 980, w: 400, h: 70, z: 2, visible: true },
 } satisfies Record<Component, LayoutRect>;
