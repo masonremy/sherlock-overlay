@@ -9,5 +9,6 @@ layouts.json
 theme.json
 portraits/
 papers/
+/icons/
 test-results/
 playwright-report/

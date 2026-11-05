@@ -20,7 +20,7 @@ address them one at a time; tick an item (and note the commit) when it's done.
 
 ## Decisions pending
 
-- [ ] **10. Custom toolkit icons.** Upload PNG/SVG artwork per toolkit item and state (stored in a git-ignored `icons/` folder), or keep editing `web/lib/icons/ToolIcon.svelte`.
+- [x] **10. Custom toolkit icons.** Done: drop `map`, `newspaper` or `notes` (.png/.jpg/.webp/.svg) into the git-ignored `icons/` folder and the toolkit uses it, else the built-in drawing. Still open: an upload button in the panel, and separate folded/open artwork (one image per item for now; the lit state is a glow).
 - [ ] **11. CLAUDE.md user-data list** doesn't mention `portraits/` and `papers/` (both git-ignored).
 - [ ] **12. DESIGN.md open questions:** which box first; camera-on-table vs digital setup; Twitch chat hooks later.
 

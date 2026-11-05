@@ -5,6 +5,7 @@ import { WebSocketServer, WebSocket } from "ws";
 import { DEFAULT_PORT, WS_PATH } from "../shared/constants";
 import { ClientMessage, type MirrorView, type ServerMessage } from "../shared/protocol";
 import { downloadGoogleFont, FontError, listFonts, saveUploadedFont } from "./fonts";
+import { listIcons } from "./icons";
 import { snapshotOverlay } from "./snapshot";
 import { AppStore } from "./store";
 import { saveImage, UnsupportedImageError } from "./uploads";
@@ -21,6 +22,7 @@ const mapsDir = resolve(dataDir, "maps");
 const portraitsDir = resolve(dataDir, "portraits");
 const papersDir = resolve(dataDir, "papers");
 const fontsDir = resolve(dataDir, "fonts");
+const iconsDir = resolve(dataDir, "icons");
 // Reopen the case that was open last, unless CASE says otherwise.
 const lastCaseFile = resolve(casesDir, ".last-case");
 const caseId = process.env.CASE ?? ((await readFile(lastCaseFile, "utf8").catch(() => "")).trim() || "default");
@@ -215,6 +217,19 @@ await app.register(fastifyStatic, {
   decorateReply: false,
   index: false,
   allowedPath: (path) => /\.(ttf|otf|woff2?)$/i.test(path),
+});
+
+// --- Custom toolkit icons ------------------------------------------------------
+
+app.get("/api/icons", async () => listIcons(iconsDir));
+
+await mkdir(iconsDir, { recursive: true });
+await app.register(fastifyStatic, {
+  root: iconsDir,
+  prefix: "/icons/",
+  decorateReply: false,
+  index: false,
+  allowedPath: (path) => /\.(png|jpe?g|webp|svg)$/i.test(path),
 });
 
 // --- Pages ------------------------------------------------------------------

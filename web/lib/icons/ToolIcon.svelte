@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { customIcons, loadCustomIcons } from "./customIcons.svelte";
   // Toolkit icons: folded map, folded newspaper, notebook. Ink line, 2 px
   // stroke at 48 px, sepia fill; "open" is the lit state of the item in focus.
   // A wax dot marks something unseen.
@@ -12,8 +13,18 @@
 
   let { kind, size = 48, state = "folded", dot = false }: Props = $props();
   const open = $derived(state === "open");
+
+  // The streamer's own artwork (icons/<kind>.png) replaces the drawing when present.
+  loadCustomIcons();
+  const custom = $derived(customIcons[kind]);
 </script>
 
+{#if custom}
+  <span class="custom" class:open style:width="{size}px" style:height="{size}px" aria-hidden="true">
+    <img src={custom} alt="" draggable="false" />
+    {#if dot}<span class="cdot"></span>{/if}
+  </span>
+{:else}
 <svg class="icon" class:open width={size} height={size} viewBox="0 0 48 48" aria-hidden="true">
   {#if kind === "map"}
     {#if open}
@@ -50,8 +61,41 @@
   {/if}
   {#if dot}<circle class="dot" cx="41" cy="8" r="5" />{/if}
 </svg>
+{/if}
 
 <style>
+  .custom {
+    position: relative;
+    display: block;
+  }
+  .custom img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    /* Folded (not in focus): colour a little muted (the toolkit fades it too). */
+    filter: saturate(0.75);
+    transition:
+      transform 300ms,
+      filter 300ms,
+      opacity 300ms;
+  }
+  /* Open (in focus): full colour, a touch larger, with a warm glow. */
+  .custom.open img {
+    filter: drop-shadow(0 0 3px rgb(176 141 43 / 0.7));
+    opacity: 1;
+    transform: scale(1.08);
+  }
+  .cdot {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 22%;
+    height: 22%;
+    border-radius: 50%;
+    background: var(--wax);
+    box-shadow: 0 0 0 2px var(--paper-light);
+  }
   .icon {
     display: block;
     overflow: visible;
