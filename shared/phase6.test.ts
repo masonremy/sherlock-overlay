@@ -163,7 +163,8 @@ describe("informants and adjacency", () => {
 
 describe("timesheet and turn fields on steps", () => {
   it("records the lead's duration and whose turn it was", () => {
-    const s = run(base(), { type: "trail/add", step: { id: "t2", mapId: "london", zoneId: "b", at: T, duration: 30, by: "p1" } });
+    const withPlayer = run(base(), { type: "case/update", patch: { players: [{ id: "p1", name: "Ann" }] } });
+    const s = run(withPlayer, { type: "trail/add", step: { id: "t2", mapId: "london", zoneId: "b", at: T, duration: 30, by: "p1" } });
     expect(s.trail[1]).toMatchObject({ duration: 30, by: "p1" });
     expect(run(s, { type: "trail/update", stepId: "t2", patch: { duration: 45 } }).trail[1].duration).toBe(45);
   });

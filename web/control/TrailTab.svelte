@@ -185,6 +185,18 @@
               <select value={step.kind} onchange={(e) => update(step, { kind: e.currentTarget.value as TrailStep["kind"] })} aria-label="Kind">
                 {#each Object.entries(KIND_LABELS) as [k, label]}<option value={k}>{label}</option>{/each}
               </select>
+              {#if app && (app.case.players.length || step.by)}
+                <select
+                  value={step.by ?? ""}
+                  aria-label="Lead investigator"
+                  title="Whose turn it was"
+                  onchange={(e) => update(step, { by: e.currentTarget.value || null })}
+                >
+                  <option value="">No investigator</option>
+                  {#each app.case.players as p (p.id)}<option value={p.id}>{p.name}</option>{/each}
+                  {#if step.by && !app.case.players.some((p) => p.id === step.by)}<option value={step.by}>(left the table)</option>{/if}
+                </select>
+              {/if}
               {#if app?.case.timesheet && step.kind !== "deadEnd"}
                 <input
                   class="minutes"

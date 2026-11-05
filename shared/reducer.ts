@@ -75,6 +75,7 @@ export function reduce(state: AppState, action: Action): AppState {
         if (index > trail.length) throw new ActionError(`Can't insert at position ${index + 1}`);
         const step = TrailStep.parse(action.step);
         checkStep(state, step, true);
+        checkPlayer(state, step.by);
         return trail.toSpliced(index, 0, step);
       });
     case "trail/update":
@@ -83,6 +84,9 @@ export function reduce(state: AppState, action: Action): AppState {
         const old = trail[index];
         const step = { ...old, ...action.patch };
         checkStep(state, step, step.mapId !== old.mapId || step.zoneId !== old.zoneId);
+        // Only a newly set investigator is checked: a player who has since left the
+        // table must not make their old steps uneditable.
+        if (action.patch.by !== undefined) checkPlayer(state, action.patch.by);
         return trail.with(index, step);
       });
     case "trail/delete":
@@ -181,9 +185,17 @@ export function reduce(state: AppState, action: Action): AppState {
       checkNoteLinks(state, action.patch);
       return { ...state, notes: state.notes.with(i, { ...state.notes[i], ...action.patch }) };
     }
-    case "note/delete":
+    case "note/delete": {
       noteIndex(state, action.noteId);
-      return { ...state, notes: state.notes.filter((n) => n.id !== action.noteId) };
+      const next = { ...state, notes: state.notes.filter((n) => n.id !== action.noteId) };
+      const o = state.overlay;
+      if (o.cardNoteId !== action.noteId) return next;
+      // The card on show is gone: take it down and go back to what was there.
+      const back = o.focusPrev === "card" ? "map" : o.focusPrev;
+      const overlay =
+        o.focus === "card" ? { ...o, cardNoteId: null, focus: back, focusPrev: "map" as const } : { ...o, cardNoteId: null, focusPrev: back };
+      return { ...next, overlay };
+    }
     case "note/move": {
       const i = noteIndex(state, action.noteId);
       if (action.toIndex >= state.notes.length) throw new ActionError(`Can't move to position ${action.toIndex + 1}`);
@@ -257,6 +269,14 @@ export function reduce(state: AppState, action: Action): AppState {
       if (!state.layouts[action.layoutId]) throw new ActionError(`No layout "${action.layoutId}"`);
       return { ...state, overlay: { ...state.overlay, layoutId: action.layoutId } };
 
+    case "overlay/showCard": {
+      const note = state.notes[noteIndex(state, action.noteId)];
+      if (note.tag !== "clue") throw new ActionError("Only notes tagged as a clue can be shown as evidence cards");
+      const o = state.overlay;
+      // Swapping one card for another keeps the original place to return to.
+      const focusPrev = o.focus === "card" ? o.focusPrev : o.focus;
+      return { ...state, overlay: { ...o, focus: "card", focusPrev, cardNoteId: note.id } };
+    }
     case "overlay/setFocus": {
       const { focus } = state.overlay;
       if (focus === action.focus) return state;
@@ -302,6 +322,13 @@ function getPortrait(state: AppState, portraitId: string) {
 /** A place reference (character address, note place) must name an existing zone. */
 function checkPlace(state: AppState, place: { mapId: string; zoneId: string } | null): void {
   if (place) zoneIndex(getMap(state, place.mapId), place.zoneId);
+}
+
+/** A step's lead investigator must be one of the case's players (or nobody). */
+function checkPlayer(state: AppState, playerId: string | null): void {
+  if (playerId && !state.case.players.some((p) => p.id === playerId)) {
+    throw new ActionError(`No player "${playerId}" in this case`);
+  }
 }
 
 function getPaper(state: AppState, paperId: string) {

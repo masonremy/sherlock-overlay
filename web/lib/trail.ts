@@ -119,6 +119,45 @@ export function searchZones(query: string, maps: MapDef[], limit = 8): ZoneMatch
     .map((s) => s.m);
 }
 
+export interface PlaceMatch extends ZoneMatch {
+  /** The informant at this address, if any ("13 SW · Scotland Yard"). */
+  informant?: string;
+}
+
+/**
+ * Places by zone label or by informant name (`#scotland` → 13 SW · Scotland
+ * Yard), best match first, each place once.
+ */
+export function searchPlaces(query: string, maps: MapDef[], limit = 8): PlaceMatch[] {
+  const q = squash(query);
+  if (!q) return [];
+  const best = new Map<string, { m: PlaceMatch; score: number }>();
+  const offer = (m: PlaceMatch, score: number) => {
+    const key = `${m.mapId}/${m.zone.id}`;
+    const prev = best.get(key);
+    if (!prev || score < prev.score) best.set(key, { m, score });
+  };
+  const rank = (text: string) => {
+    const s = squash(text);
+    const words = text.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+    return s === q ? 0 : s.startsWith(q) ? 1 : words.some((w) => w.startsWith(q)) ? 2 : s.includes(q) ? 3 : -1;
+  };
+  for (const map of maps) {
+    const informantAt = new Map((map.informants ?? []).map((i) => [i.zoneId, i.name]));
+    for (const zone of map.zones) {
+      const m: PlaceMatch = { mapId: map.id, mapName: map.name || map.id, zone, informant: informantAt.get(zone.id) };
+      const byLabel = rank(zone.label);
+      const byName = m.informant ? rank(m.informant) : -1;
+      const score = Math.min(...[byLabel, byName].filter((s) => s >= 0));
+      if (Number.isFinite(score)) offer(m, score);
+    }
+  }
+  return [...best.values()]
+    .sort((a, b) => a.score - b.score || a.m.zone.label.localeCompare(b.m.zone.label, undefined, { numeric: true }))
+    .slice(0, limit)
+    .map((s) => s.m);
+}
+
 /** Display name for a step's place. */
 export function stepPlace(step: TrailStep, maps: Record<string, MapDef>): string {
   if (!step.mapId || !step.zoneId) return step.customLabel ?? "?";

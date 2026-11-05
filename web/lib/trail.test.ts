@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { MapDef, TrailStep } from "../../shared/schema";
-import { frameAnchors, leadCount, pathSegments, pinGroups, searchZones } from "./trail";
+import { frameAnchors, leadCount, pathSegments, pinGroups, searchPlaces, searchZones } from "./trail";
 
 const step = (id: string, zoneId: string | null, kind: TrailStep["kind"] = "lead", mapId = "london"): TrailStep => ({
   id,
@@ -65,6 +65,31 @@ describe("frameAnchors", () => {
     const anchors = { a: [0.1, 0.1], b: [0.5, 0.5], c: [0.9, 0.9] } as Record<string, [number, number]>;
     const trail = [step("t1", "a"), step("t2", "b"), step("t3", null), step("t4", "c"), step("t5", "c")];
     expect(frameAnchors(trail, "london", anchors, 3)).toEqual([[0.5, 0.5], [0.9, 0.9], [0.9, 0.9]]);
+  });
+});
+
+describe("searchPlaces", () => {
+  const zone = (id: string, label: string) => ({ id, label, district: "", shape: "rect" as const, points: [], anchor: [0, 0] as [number, number], visitable: true });
+  const maps = [
+    {
+      id: "london",
+      name: "London",
+      zones: [zone("a", "13 SW"), zone("b", "4 WC")],
+      informants: [{ id: "i1", name: "Scotland Yard", zoneId: "a" }],
+    },
+  ] as unknown as MapDef[];
+
+  it("finds informants by name, labelled with their address", () => {
+    expect(searchPlaces("scot", maps)).toEqual([{ mapId: "london", mapName: "London", zone: maps[0].zones[0], informant: "Scotland Yard" }]);
+  });
+
+  it("finds zones by label, naming the informant who lives there", () => {
+    expect(searchPlaces("13sw", maps)[0]).toMatchObject({ zone: { label: "13 SW" }, informant: "Scotland Yard" });
+    expect(searchPlaces("4wc", maps)[0]).toMatchObject({ zone: { label: "4 WC" }, informant: undefined });
+  });
+
+  it("lists each place once", () => {
+    expect(searchPlaces("s", maps).filter((m) => m.zone.id === "a")).toHaveLength(1);
   });
 });
 

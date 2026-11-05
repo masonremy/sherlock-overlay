@@ -10,7 +10,7 @@ const nullableString = z.string().nullable().default(null);
 export const StepKind = z.enum(["lead", "free", "reread", "deadEnd"]);
 export const CharacterStatus = z.enum(["suspect", "witness", "ally", "victim", "cleared"]);
 export const NoteTag = z.enum(["clue", "question", "theory"]);
-export const FocusItem = z.enum(["map", "newspaper", "notes", "verdict"]);
+export const FocusItem = z.enum(["map", "newspaper", "notes", "verdict", "card"]);
 export const MapView = z.enum(["full", "auto-frame", "mirror"]);
 
 export const PlaceRef = z.object({ mapId: id, zoneId: id });
@@ -133,7 +133,9 @@ export const OverlayState = z.object({
   /** Hide just the map (e.g. while reading a spoiler-sensitive paragraph). */
   hideMap: z.boolean().default(false),
   /** How the expanded notes view groups notes. */
-  notesGroup: z.enum(["tag", "step"]).default("tag"),
+  notesGroup: z.enum(["tag", "step", "cards"]).default("tag"),
+  /** The clue shown as an evidence card when the focus area holds a card. */
+  cardNoteId: nullableString,
   /** Faint rings on the map for places named in notes but not yet visited. */
   noteRings: z.boolean().default(true),
   /** Outline every layout box on stream, for setting up before going live. */
@@ -247,6 +249,8 @@ export type Paper = z.infer<typeof Paper>;
 // --- Layouts (layouts.json) and theme (theme.json), global -----------------
 
 export const ComponentId = z.enum(COMPONENTS);
+/** What fonts can be set for: the layout components plus evidence cards. */
+export const ThemeTarget = z.enum([...COMPONENTS, "cards"]);
 export type ComponentId = z.infer<typeof ComponentId>;
 export const LayoutId = z.string().regex(/^[a-z0-9][a-z0-9_-]{0,39}$/, "Layout id: lowercase letters, digits, - and _");
 
@@ -305,7 +309,7 @@ export type FontStyle = z.infer<typeof FontStyle>;
 export const Theme = z.object({
   display: z.string().max(80).default("IM Fell English"),
   body: z.string().max(80).default("Source Sans 3"),
-  components: z.partialRecord(ComponentId, FontStyle).default({}),
+  components: z.partialRecord(ThemeTarget, FontStyle).default({}),
 });
 export type Theme = z.infer<typeof Theme>;
 

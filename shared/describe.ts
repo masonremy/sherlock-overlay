@@ -129,6 +129,8 @@ export function describeAction(action: Action, state: AppState): string {
       return `Overlay layout → ${state.layouts[action.layoutId]?.name || action.layoutId}`;
     case "overlay/setFocus":
       return `Focus area → ${action.focus}`;
+    case "overlay/showCard":
+      return `Showed evidence card “${clip(noteText(action.noteId))}”`;
     case "overlay/returnFocus":
       return "Focus area → back";
     case "overlay/configure": {

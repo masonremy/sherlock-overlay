@@ -2,8 +2,8 @@
 
 import type { ActionInput } from "../../shared/actions";
 
-export type FocusItem = "map" | "newspaper" | "notes" | "verdict";
-export type ToolItem = Exclude<FocusItem, "verdict">;
+export type FocusItem = "map" | "newspaper" | "notes" | "verdict" | "card";
+export type ToolItem = Exclude<FocusItem, "verdict" | "card">;
 
 /** Toolkit buttons and Ctrl+1/2/3: select an item, or dismiss it if it's already in focus. */
 export function focusAction(current: FocusItem, target: FocusItem): ActionInput | null {

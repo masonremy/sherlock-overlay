@@ -14,6 +14,7 @@
   import { shelfPapers } from "../lib/papers";
   import { connect } from "../lib/socket";
   import { isNumbered } from "../lib/trail";
+  import EvidenceCard from "../lib/EvidenceCard.svelte";
   import CastRail from "./CastRail.svelte";
   import Guides from "./Guides.svelte";
   import Intro from "./Intro.svelte";
@@ -81,6 +82,12 @@
     });
   });
   const vars = (id?: Component) => (theme ? fontVars(theme, id) : "");
+  // Evidence cards: their own font settings; the typed face unless overridden.
+  const cardStyle = $derived.by(() => {
+    if (!theme) return "";
+    const display = theme.components.cards?.display;
+    return fontVars(theme, "cards") + (display ? `; --card-font: "${display.replace(/"/g, "")}"` : "");
+  });
 
   // --- Map --------------------------------------------------------------------------
   // Mirror follows the panel; otherwise a pinned map, else the trail's latest map.
@@ -169,13 +176,25 @@
   // --- Focus area and toolkit ------------------------------------------------
   const onStream = $derived(app?.notes.filter(isOnStream) ?? []);
   const tools = $derived(toolkitItems(app?.newspaper.paperId ?? null));
+  const cardNote = $derived(app?.notes.find((n) => n.id === app.overlay.cardNoteId) ?? null);
   // What the focus area actually draws: a hidden map or a missing paper show nothing.
   const focusShown = $derived.by((): FocusItem | null => {
     const f = app?.overlay.focus ?? "map";
     if (f === "map") return app?.overlay.hideMap ? null : "map";
     if (f === "newspaper") return openPaper ? "newspaper" : null;
+    if (f === "card") return cardNote ? "card" : null;
     return f;
   });
+
+  // A card is laid down on the focus area like a slip dropped on the table.
+  function cardIn(_node: HTMLElement) {
+    if (motion.reduced) return { duration: 200, css: (t: number) => `opacity: ${t}` };
+    return {
+      duration: 550,
+      easing: cubicInOut,
+      css: (t: number) => `opacity: ${Math.min(1, t * 2)}; transform: translateY(${(1 - t) * -90}px) scale(${1.08 - 0.08 * t})`,
+    };
+  }
 
   // Items fold into, and unfold out of, their toolkit icon (the verdict just rises).
   const TOOL_ICON = 40;
@@ -280,7 +299,11 @@
             in:fold={{ origin: foldOrigin("notes"), delay: 180 }}
             out:fold={{ origin: foldOrigin("notes") }}
           >
-            <NotesFocus notes={onStream} {trail} characters={app.characters} maps={app.maps} group={app.overlay.notesGroup} />
+            <NotesFocus notes={onStream} {trail} characters={app.characters} maps={app.maps} group={app.overlay.notesGroup} {cardStyle} />
+          </section>
+        {:else if focusShown === "card" && cardNote}
+          <section class="card-slot" style="{box('focus')};{cardStyle}" in:cardIn out:fade={{ duration: ms(250) }}>
+            <EvidenceCard note={cardNote} {trail} characters={app.characters} maps={app.maps} width={Math.min(L.focus.w * 0.72, 760)} />
           </section>
         {:else if focusShown === "verdict"}
           <section
@@ -367,6 +390,11 @@
   }
   .toolkit {
     border-radius: 6px;
+  }
+  .card-slot {
+    position: absolute;
+    display: grid;
+    place-items: center;
   }
   .intro-slot {
     position: absolute;

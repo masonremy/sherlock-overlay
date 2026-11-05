@@ -4,6 +4,7 @@
   import { DEFAULT_LAYOUT } from "../../shared/layout";
   import Avatar from "../lib/Avatar.svelte";
   import { newId } from "../lib/cast";
+  import EvidenceSlip from "../lib/icons/EvidenceSlip.svelte";
   import TagMark from "../lib/icons/TagMark.svelte";
   import {
     autoLinks,
@@ -173,10 +174,11 @@
         Group
         <select
           value={app.overlay.notesGroup}
-          onchange={(e) => dispatch({ type: "overlay/configure", patch: { notesGroup: e.currentTarget.value as "tag" | "step" } })}
+          onchange={(e) => dispatch({ type: "overlay/configure", patch: { notesGroup: e.currentTarget.value as "tag" | "step" | "cards" } })}
         >
           <option value="tag">by tag</option>
           <option value="step">by step</option>
+          <option value="cards">card wall (clues)</option>
         </select>
       </label>
       <label class="check">
@@ -280,6 +282,18 @@
                 {#each Object.entries(TAG_LABELS) as [k, label]}<option value={k}>{label}</option>{/each}
               </select>
               <button type="button" onclick={() => startEdit(n)}>Edit</button>
+              {#if n.tag === "clue"}
+                {@const showing = app.overlay.focus === "card" && app.overlay.cardNoteId === n.id}
+                <button
+                  type="button"
+                  class:on={showing}
+                  title={showing ? "Take the card down (Esc)" : "Show this clue as an evidence card in the focus area"}
+                  onclick={() => dispatch(showing ? { type: "overlay/returnFocus" } : { type: "overlay/showCard", noteId: n.id })}
+                >
+                  <EvidenceSlip size={14} />
+                  {showing ? "Hide card" : "Show card"}
+                </button>
+              {/if}
               <button type="button" onclick={() => (openLinks = openLinks === n.id ? null : n.id)} class:on={openLinks === n.id || expanded}>
                 Links{n.stepIds.length + n.characterIds.length + n.places.length ? ` (${n.stepIds.length + n.characterIds.length + n.places.length})` : ""}
               </button>

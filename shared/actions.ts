@@ -241,6 +241,8 @@ export const Action = z.discriminatedUnion("type", [
   // Overlay
   z.object({ type: z.literal("overlay/setLayout"), layoutId: LayoutId }),
   z.object({ type: z.literal("overlay/setFocus"), focus: FocusItem }),
+  // Puts one clue in the focus area as an evidence card.
+  z.object({ type: z.literal("overlay/showCard"), noteId: z.string() }),
   z.object({ type: z.literal("overlay/returnFocus") }),
   z.object({
     type: z.literal("overlay/configure"),

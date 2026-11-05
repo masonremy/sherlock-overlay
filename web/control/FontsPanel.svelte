@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { COMPONENT_LABELS, COMPONENTS, type Component } from "../../shared/layout";
+  import { THEME_LABELS, THEME_TARGETS, type ThemeTargetId } from "../../shared/layout";
   import type { FontStyle, Theme } from "../../shared/schema";
   import { BUNDLED_FONTS, ensureFonts, fetchServerFonts, themeFamilies, type ServerFont } from "../lib/fonts";
   import type { Connection } from "../lib/socket";
@@ -37,7 +37,7 @@
     else dirty = true;
   }
   const DEFAULT_STYLE: FontStyle = { display: null, body: null, scale: 1, weight: null, letterSpacing: 0 };
-  function setComponent(id: Component, patch: Partial<FontStyle> | null) {
+  function setComponent(id: ThemeTargetId, patch: Partial<FontStyle> | null) {
     if (!draft) return;
     const components = { ...draft.components };
     if (patch === null) delete components[id];
@@ -45,7 +45,7 @@
     commit({ ...draft, components });
   }
 
-  let open = $state<Component | null>(null);
+  let open = $state<ThemeTargetId | null>(null);
   let upFamily = $state("");
   let googleFamily = $state("");
   let busy = $state<string | null>(null);
@@ -102,11 +102,11 @@
     </div>
 
     <ul>
-      {#each COMPONENTS as id (id)}
+      {#each THEME_TARGETS as id (id)}
         {@const s = draft.components[id]}
         <li>
           <button type="button" class="comp" onclick={() => (open = open === id ? null : id)}>
-            {open === id ? "▾" : "▸"} {COMPONENT_LABELS[id]}
+            {open === id ? "▾" : "▸"} {THEME_LABELS[id]}
             <small>{s ? `${s.display ?? "inherit"} / ${s.body ?? "inherit"} · ${Math.round(s.scale * 100)}%` : "inherits"}</small>
           </button>
           {#if s}<button type="button" class="reset" title="Back to inherit" onclick={() => setComponent(id, null)}>↺</button>{/if}
@@ -115,7 +115,7 @@
               <label>
                 Display
                 <select value={s?.display ?? ""} onchange={(e) => setComponent(id, { display: e.currentTarget.value || null })}>
-                  <option value="">Inherit ({draft.display})</option>
+                  <option value="">{id === "cards" ? "Typed label look (Special Elite)" : `Inherit (${draft.display})`}</option>
                   {#each families as f (f)}<option value={f}>{f}</option>{/each}
                 </select>
               </label>

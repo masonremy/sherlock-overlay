@@ -13,6 +13,11 @@ export const COMPONENT_LABELS: Record<Component, string> = {
   toolkit: "Toolkit",
 };
 
+/** Everything with its own font settings: the components plus evidence cards. */
+export const THEME_TARGETS = [...COMPONENTS, "cards"] as const;
+export type ThemeTargetId = (typeof THEME_TARGETS)[number];
+export const THEME_LABELS: Record<ThemeTargetId, string> = { ...COMPONENT_LABELS, cards: "Evidence cards" };
+
 export interface LayoutRect {
   x: number;
   y: number;

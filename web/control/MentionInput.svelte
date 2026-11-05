@@ -2,7 +2,7 @@
   import { tick } from "svelte";
   import type { Character, MapDef } from "../../shared/schema";
   import { mentionAt, type MentionLink as Link } from "../lib/notes";
-  import { searchZones } from "../lib/trail";
+  import { searchPlaces } from "../lib/trail";
 
   // A text input (or textarea) where "@" autocompletes characters and "#"
   // autocompletes places. Picking one inserts "@Name" / "#14 WC" and reports
@@ -59,8 +59,9 @@
       return found;
     }
     if (!q) return [];
-    return searchZones(mention.query, caseMaps, 6).map((m) => ({
-      label: `${m.zone.label}${caseMaps.length > 1 ? ` · ${m.mapName}` : ""}`,
+    // Zone labels and informant names: "#scot" offers 13 SW · Scotland Yard.
+    return searchPlaces(mention.query, caseMaps, 6).map((m) => ({
+      label: [m.zone.label, m.informant, caseMaps.length > 1 ? m.mapName : null].filter(Boolean).join(" · "),
       insert: `#${m.zone.label}`,
       link: { place: { mapId: m.mapId, zoneId: m.zone.id } },
     }));
