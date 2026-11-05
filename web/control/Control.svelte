@@ -13,6 +13,7 @@
   import NotesTab from "./NotesTab.svelte";
   import OverlayTab from "./OverlayTab.svelte";
   import DocsTab from "./DocsTab.svelte";
+  import PaperTab from "./PaperTab.svelte";
   import { loadDocList } from "../lib/docs";
   import { PlayState, TABS } from "./play.svelte";
   import QuickNote from "./QuickNote.svelte";
@@ -25,10 +26,10 @@
 
   // Two modes: Play (record the investigation) and Zones (build map definitions).
   type Mode = "play" | "zones";
-  const TAB_LABELS = { trail: "Trail", notes: "Notes", cast: "Cast", keys: "Keys", docs: "Documents", case: "Case", overlay: "Overlay", layout: "Layout" };
+  const TAB_LABELS = { trail: "Trail", notes: "Notes", cast: "Cast", keys: "Keys", paper: "Paper", docs: "Documents", case: "Case", overlay: "Overlay", layout: "Layout" };
   const initial = location.hash.slice(1);
   let mode = $state<Mode>(initial === "maps" || initial === "zones" ? "zones" : "play");
-  play.tab = TABS.find((t) => t === initial) ?? (initial === "paper" ? "docs" : "trail");
+  play.tab = TABS.find((t) => t === initial) ?? "trail";
 
   // Focus area / toolkit
   const overlay = $derived($snapshot?.state.overlay);
@@ -164,6 +165,8 @@
             <CastTab {conn} {play} onAdd={() => (charForm = { id: null })} onEdit={(id) => (charForm = { id })} />
           {:else if play.tab === "keys"}
             <KeysTab {conn} />
+          {:else if play.tab === "paper"}
+            <PaperTab {conn} {play} onToggle={() => toggleFocus("newspaper")} />
           {:else if play.tab === "docs"}
             <DocsTab {conn} {play} onToggle={toggleFocus} />
           {:else if play.tab === "case"}
@@ -349,6 +352,8 @@
     }
     .tabcol {
       flex: 0 0 400px;
+      /* Never widened by its content (previews size themselves from this width). */
+      min-width: 0;
       min-height: 0;
     }
     .tabbody {

@@ -3,6 +3,7 @@
 
 import type { DocLine, DocText } from "../../shared/docs";
 import type { MapDef } from "../../shared/schema";
+import { zoneName } from "./trail";
 
 /** Lower case, no accents, straight apostrophes and quotes: what search compares. */
 export function normalizeText(s: string): string {
@@ -119,7 +120,7 @@ const squash = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
 export function zoneForAddress(maps: MapDef[], address: Address): { mapId: string; zoneId: string } | null {
   const want = squash(address.label);
   for (const map of maps) {
-    const zone = map.zones.find((z) => squash(z.label) === want);
+    const zone = map.zones.find((z) => squash(zoneName(z)) === want);
     if (zone) return { mapId: map.id, zoneId: zone.id };
   }
   return null;

@@ -7,6 +7,7 @@
   import MapExtras from "./MapExtras.svelte";
   import ZoneCanvas from "./ZoneCanvas.svelte";
   import ZoneInspector from "./ZoneInspector.svelte";
+  import { zoneName } from "../lib/trail";
   import { TOOLS, type Tool } from "./zoneTools";
 
   let { conn, active }: { conn: Connection; active: boolean } = $props();
@@ -61,9 +62,11 @@
   const districts = $derived([...new Set((map?.zones ?? []).map((z) => z.district).filter(Boolean))].sort());
   const blockedCount = $derived(map?.zones.filter((z) => !z.visitable).length ?? 0);
   const listed = $derived.by(() => {
-    const q = filter.trim().toLowerCase();
+    // "1 wc", "1wc" and "WC" all find 1 in WC; label and district are searched together.
+    const squash = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+    const q = squash(filter);
     return (map?.zones ?? [])
-      .filter((z) => !q || z.label.toLowerCase().includes(q) || z.district.toLowerCase().includes(q))
+      .filter((z) => !q || squash(zoneName(z)).includes(q) || squash(z.district).includes(q))
       .toSorted((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true }));
   });
 

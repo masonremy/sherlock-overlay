@@ -23,10 +23,8 @@
   const { snapshot, dispatch, readers, sendReader } = conn;
 
   const app = $derived($snapshot?.state);
-  const own = $derived(app?.newspaper.paperId ? (app.papers[app.newspaper.paperId] ?? null) : null);
   const day = $derived(app?.case.timesheet ? timesheet(app.trail, app.maps).now.day : 1);
   const shelf = $derived(app ? shelfPapers(app.papers, app.newspaper.paperId, day) : []);
-  const library = $derived(Object.values(app?.papers ?? {}).sort((a, b) => (a.date ?? "").localeCompare(b.date ?? "") || a.id.localeCompare(b.id)));
   const caseMaps = $derived(app ? app.case.mapIds.map((id) => app.maps[id]).filter(Boolean) : []);
 
   let docs = $state<DocInfo[]>([]);
@@ -153,7 +151,6 @@
   const addressZone = $derived(address ? zoneForAddress(caseMaps, address) : null);
 
   // --- Newspapers --------------------------------------------------------------------------
-  const update = (p: Paper, patch: { date?: string | null; title?: string }) => dispatch({ type: "paper/update", paperId: p.id, patch });
   const dateLabel = (p: Paper) =>
     p.date ? new Date(`${p.date}T12:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }) : "Undated";
   const docLabel = (d: DocInfo) => {
@@ -168,6 +165,9 @@
     {#if !docs.length}
       <p class="hint">No documents found. Put the case's PDFs (newspapers, directory, informants) in <code>artifacts/</code> and restart the server.</p>
     {:else}
+      {#if !app.newspaper.paperId}
+        <p class="hint">No newspaper yet: choose this case's paper in the Paper tab to read and search it here.</p>
+      {/if}
       <div class="chips" role="group" aria-label="Document">
         {#each readable as d (d.id)}
           <button type="button" class:on={current?.id === d.id} onclick={() => (play.docId = d.id)}>
@@ -263,33 +263,13 @@
         <p class="hint">Scroll to move, Ctrl+scroll to zoom, drag to pan.{#if !isLive} Only you see this until it's on stream.{/if}</p>
       {/if}
 
-      <fieldset>
-        <legend>Newspapers</legend>
-        {#if !own}
-          <p class="hint">Choose this case's paper. Earlier-dated papers join it on the shelf; later ones stay hidden.</p>
-        {:else if !app.newspaper.opened}
-          <p class="hint dot">● Viewers see a dot on the paper until it's opened.</p>
-        {/if}
-        <ul>
-          {#each library as p (p.id)}
-            <li class:own={p.id === own?.id} class:later={!!own && !shelf.includes(p)}>
-              <input type="date" value={p.date ?? ""} onchange={(e) => update(p, { date: e.currentTarget.value || null })} aria-label="Date" />
-              <input value={p.title} placeholder="Title" maxlength="80" onchange={(e) => update(p, { title: e.currentTarget.value })} aria-label="Title" />
-              {#if p.id === own?.id}
-                <span class="tag">this case</span>
-              {:else}
-                <button type="button" title="Make this the case's paper" onclick={() => dispatch({ type: "newspaper/update", patch: { paperId: p.id, showing: null, zoom: null } })}>Use</button>
-              {/if}
-            </li>
-          {/each}
-        </ul>
-      </fieldset>
     {/if}
   </div>
 {/if}
 
 <style>
   .docs-tab {
+    min-width: 0;
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -398,50 +378,6 @@
     gap: 8px;
     align-items: center;
     font-size: 13px;
-  }
-  fieldset {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    margin: 0;
-    padding: 8px 10px;
-    border: 1px solid #d8c9aa;
-    border-radius: 6px;
-  }
-  legend {
-    font-size: 12px;
-    color: #6b5a44;
-  }
-  ul {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-  }
-  li {
-    display: flex;
-    gap: 6px;
-    align-items: center;
-    padding: 3px 0;
-    border-bottom: 1px solid #e3d7bd;
-  }
-  li.own {
-    font-weight: 600;
-  }
-  li.later {
-    opacity: 0.55;
-  }
-  li input[type="date"] {
-    width: 128px;
-  }
-  li input:not([type="date"]) {
-    flex: 1;
-  }
-  .tag {
-    font-size: 12px;
-    color: #8b2e22;
-  }
-  .dot {
-    color: #9b1c1c;
   }
   .hint {
     margin: 0;

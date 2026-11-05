@@ -82,6 +82,19 @@ describe("autoLinks", () => {
       places: [{ mapId: "london", zoneId: "sw-13" }],
     });
   });
+
+  it("tells zones with the same number apart by district", () => {
+    const zone = (id: string, label: string, district: string) => ({ id, label, district, shape: "rect", points: [], anchor: [0, 0], visitable: true });
+    const numbered = [{ id: "london", name: "London", zones: [zone("w1", "1", "WC"), zone("e1", "1", "EC"), zone("se9", "9", "SE")] }] as unknown as MapDef[];
+    expect(autoLinks("Went to #1 EC", [], numbered).places).toEqual([{ mapId: "london", zoneId: "e1" }]);
+    expect(autoLinks("Went to #1 then", [], numbered).places).toEqual([]); // which 1?
+    expect(autoLinks("Went to #9", [], numbered).places).toEqual([{ mapId: "london", zoneId: "se9" }]); // only one 9
+  });
+
+  it("shows linked places with their district", () => {
+    const numbered = { london: { id: "london", zones: [{ id: "e1", label: "1", district: "EC" }] } } as unknown as Record<string, MapDef>;
+    expect(toDisplay("At #[london/e1].", [], numbered)).toBe("At #1 EC.");
+  });
 });
 
 describe("mentionAt", () => {

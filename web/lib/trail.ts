@@ -93,28 +93,35 @@ export function curvePath([x0, y0]: Point, [x1, y1]: Point): string {
 
 const squash = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
 
+/** A zone's full name: its label plus the district ("1" in WC → "1 WC"), unless the label already ends with it. */
+export function zoneName(zone: Pick<Zone, "label" | "district">): string {
+  const d = (zone.district ?? "").trim();
+  return d && !squash(zone.label).endsWith(squash(d)) ? `${zone.label} ${d}` : zone.label;
+}
+
 export interface ZoneMatch {
   mapId: string;
   mapName: string;
   zone: Zone;
 }
 
-/** "14wc", "14 WC" and "14-wc" all find 14 WC; exact, then prefix, then contains. */
+/** "14wc", "14 WC" and "14-wc" all find 14 WC (label and district); exact, then prefix, then contains. */
 export function searchZones(query: string, maps: MapDef[], limit = 8): ZoneMatch[] {
   const q = squash(query);
   if (!q) return [];
   const scored: { m: ZoneMatch; score: number }[] = [];
   for (const map of maps) {
     for (const zone of map.zones) {
-      const label = squash(zone.label);
-      const words = zone.label.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+      const name = zoneName(zone);
+      const label = squash(name);
+      const words = name.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
       const score =
         label === q ? 0 : label.startsWith(q) ? 1 : words.some((w) => w.startsWith(q)) ? 2 : label.includes(q) ? 3 : -1;
       if (score >= 0) scored.push({ m: { mapId: map.id, mapName: map.name || map.id, zone }, score });
     }
   }
   return scored
-    .sort((a, b) => a.score - b.score || a.m.zone.label.localeCompare(b.m.zone.label, undefined, { numeric: true }))
+    .sort((a, b) => a.score - b.score || zoneName(a.m.zone).localeCompare(zoneName(b.m.zone), undefined, { numeric: true }))
     .slice(0, limit)
     .map((s) => s.m);
 }
@@ -146,14 +153,14 @@ export function searchPlaces(query: string, maps: MapDef[], limit = 8): PlaceMat
     const informantAt = new Map((map.informants ?? []).map((i) => [i.zoneId, i.name]));
     for (const zone of map.zones) {
       const m: PlaceMatch = { mapId: map.id, mapName: map.name || map.id, zone, informant: informantAt.get(zone.id) };
-      const byLabel = rank(zone.label);
+      const byLabel = rank(zoneName(zone));
       const byName = m.informant ? rank(m.informant) : -1;
       const score = Math.min(...[byLabel, byName].filter((s) => s >= 0));
       if (Number.isFinite(score)) offer(m, score);
     }
   }
   return [...best.values()]
-    .sort((a, b) => a.score - b.score || a.m.zone.label.localeCompare(b.m.zone.label, undefined, { numeric: true }))
+    .sort((a, b) => a.score - b.score || zoneName(a.m.zone).localeCompare(zoneName(b.m.zone), undefined, { numeric: true }))
     .slice(0, limit)
     .map((s) => s.m);
 }
@@ -161,7 +168,8 @@ export function searchPlaces(query: string, maps: MapDef[], limit = 8): PlaceMat
 /** Display name for a step's place. */
 export function stepPlace(step: TrailStep, maps: Record<string, MapDef>): string {
   if (!step.mapId || !step.zoneId) return step.customLabel ?? "?";
-  return maps[step.mapId]?.zones.find((z) => z.id === step.zoneId)?.label ?? step.zoneId;
+  const zone = maps[step.mapId]?.zones.find((z) => z.id === step.zoneId);
+  return zone ? zoneName(zone) : step.zoneId;
 }
 
 export function newStepId(): string {

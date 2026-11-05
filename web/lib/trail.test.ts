@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { MapDef, TrailStep } from "../../shared/schema";
-import { frameAnchors, leadCount, pathSegments, pinGroups, searchPlaces, searchZones } from "./trail";
+import { frameAnchors, leadCount, pathSegments, pinGroups, searchPlaces, searchZones, zoneName } from "./trail";
 
 const step = (id: string, zoneId: string | null, kind: TrailStep["kind"] = "lead", mapId = "london"): TrailStep => ({
   id,
@@ -91,6 +91,11 @@ describe("searchPlaces", () => {
   it("lists each place once", () => {
     expect(searchPlaces("s", maps).filter((m) => m.zone.id === "a")).toHaveLength(1);
   });
+
+  it("searches the district with the label", () => {
+    const numbered = [{ id: "london", name: "London", zones: [{ ...zone("w", "1"), district: "WC" }, { ...zone("e", "1"), district: "EC" }] }] as unknown as MapDef[];
+    expect(searchPlaces("1 ec", numbered).map((m) => m.zone.id)).toEqual(["e"]);
+  });
 });
 
 describe("searchZones", () => {
@@ -119,5 +124,21 @@ describe("searchZones", () => {
 
   it("returns nothing for an empty query", () => {
     expect(searchZones("  ", maps)).toEqual([]);
+  });
+
+  it("searches the district with the label, so 1 WC and 1 EC are told apart", () => {
+    const numbered = [{ id: "london", name: "London", zones: [zone("w", "1", "WC"), zone("e", "1", "EC"), zone("x", "14 WC", "WC")] }] as unknown as MapDef[];
+    expect(searchZones("1 EC", numbered).map((r) => r.zone.id)).toEqual(["e"]);
+    expect(searchZones("1wc", numbered).map((r) => r.zone.id)).toEqual(["w"]);
+    expect(searchZones("1", numbered).map((r) => r.zone.id).slice(0, 2).sort()).toEqual(["e", "w"]);
+  });
+});
+
+describe("zone names", () => {
+  it("add the district unless the label already ends with it", () => {
+    const z = (label: string, district: string) => ({ label, district }) as never;
+    expect(zoneName(z("1", "WC"))).toBe("1 WC");
+    expect(zoneName(z("22 WC", "WC"))).toBe("22 WC");
+    expect(zoneName(z("Scotland Yard", ""))).toBe("Scotland Yard");
   });
 });

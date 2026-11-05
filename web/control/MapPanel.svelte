@@ -4,7 +4,7 @@
   import { currentInvestigator } from "../../shared/game";
   import { searchCharacters, suggestKind } from "../lib/cast";
   import type { Connection } from "../lib/socket";
-  import { KIND_LABELS, newStepId, searchZones, type ZoneMatch } from "../lib/trail";
+  import { KIND_LABELS, newStepId, searchZones, type ZoneMatch, zoneName } from "../lib/trail";
   import PlayMap from "./PlayMap.svelte";
   import type { PlayState } from "./play.svelte";
 
@@ -293,10 +293,11 @@
                   type="button"
                   class:hi={i === hi}
                   class:blocked={!m.zone.visitable}
+                  onmouseenter={() => (hi = i)}
                   onmousedown={(e) => e.preventDefault()}
                   onclick={() => choose(m)}
                 >
-                  <span>{#if m.who}<b>{m.who}</b> → {/if}{m.zone.label}</span>
+                  <span>{#if m.who}<b>{m.who}</b> → {/if}{zoneName(m.zone)}</span>
                   {#if caseMaps.length > 1}<small>{m.mapName}</small>{/if}
                 </button>
               </li>

@@ -2,6 +2,7 @@
 // filtering and "leads to follow" rings. Shared by panel and overlay.
 
 import type { Character, MapDef, Note, TrailStep } from "../../shared/schema";
+import { zoneName } from "./trail";
 
 export const TAG_LABELS: Record<NonNullable<Note["tag"]>, string> = {
   clue: "Clue",
@@ -29,7 +30,8 @@ export const charToken = (id: string) => `@[${id}]`;
 export const placeToken = (mapId: string, zoneId: string) => `#[${mapId}/${zoneId}]`;
 
 function zoneLabel(maps: Record<string, MapDef>, mapId: string, zoneId: string): string | null {
-  return maps[mapId]?.zones.find((z) => z.id === zoneId)?.label ?? null;
+  const zone = maps[mapId]?.zones.find((z) => z.id === zoneId);
+  return zone ? zoneName(zone) : null;
 }
 
 /** Text as people read and type it: tokens become "@Name" and "#14 WC". */
@@ -171,8 +173,15 @@ export function autoLinks(
     }
     return false;
   };
+  const labelCount = new Map<string, number>();
+  for (const z of caseMaps.flatMap((m) => m.zones)) labelCount.set(z.label, (labelCount.get(z.label) ?? 0) + 1);
   return {
     characterIds: characters.filter((c) => present(`@${c.name}`)).map((c) => c.id),
-    places: caseMaps.flatMap((m) => m.zones.filter((z) => present(`#${z.label}`)).map((z) => ({ mapId: m.id, zoneId: z.id }))),
+    // "#1 EC" by full name; a bare "#22 WC" or "#9" only when no other zone has that label.
+    places: caseMaps.flatMap((m) =>
+      m.zones
+        .filter((z) => present(`#${zoneName(z)}`) || (labelCount.get(z.label) === 1 && present(`#${z.label}`)))
+        .map((z) => ({ mapId: m.id, zoneId: z.id })),
+    ),
   };
 }

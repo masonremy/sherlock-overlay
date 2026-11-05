@@ -128,4 +128,9 @@ describe("addresses", () => {
     expect(zoneForAddress(maps, { label: "22 WC", number: 22, district: "WC" })).toEqual({ mapId: "london", zoneId: "z1" });
     expect(zoneForAddress(maps, { label: "9 SE", number: 9, district: "SE" })).toBeNull();
   });
+
+  it("matches a zone labelled with just its number, by district", () => {
+    const maps = [{ id: "london", zones: [{ id: "w", label: "1", district: "WC" }, { id: "e", label: "1", district: "EC" }] }] as unknown as MapDef[];
+    expect(zoneForAddress(maps, { label: "1 EC", number: 1, district: "EC" })).toEqual({ mapId: "london", zoneId: "e" });
+  });
 });

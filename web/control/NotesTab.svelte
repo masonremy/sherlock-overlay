@@ -19,7 +19,7 @@
   import NotesStrip from "../lib/NotesStrip.svelte";
   import NoteText from "../lib/NoteText.svelte";
   import type { Connection } from "../lib/socket";
-  import { searchZones, stepPlace } from "../lib/trail";
+  import { searchZones, stepPlace, zoneName } from "../lib/trail";
   import MentionInput from "./MentionInput.svelte";
   import type { PlayState } from "./play.svelte";
 
@@ -369,7 +369,7 @@
               {#if placeQuery.trim()}
                 <div class="adders">
                   {#each placeResults as m (m.mapId + m.zone.id)}
-                    <button type="button" onclick={() => addPlace(n, { mapId: m.mapId, zoneId: m.zone.id })}>{m.zone.label}</button>
+                    <button type="button" onclick={() => addPlace(n, { mapId: m.mapId, zoneId: m.zone.id })}>{zoneName(m.zone)}</button>
                   {:else}
                     <small>No zone matches</small>
                   {/each}

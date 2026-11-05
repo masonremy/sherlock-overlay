@@ -2,7 +2,7 @@
   import { tick } from "svelte";
   import type { Character, MapDef } from "../../shared/schema";
   import { mentionAt, type MentionLink as Link } from "../lib/notes";
-  import { searchPlaces } from "../lib/trail";
+  import { searchPlaces, zoneName } from "../lib/trail";
 
   // A text input (or textarea) where "@" autocompletes characters and "#"
   // autocompletes places. Picking one inserts "@Name" / "#14 WC" and reports
@@ -61,8 +61,8 @@
     if (!q) return [];
     // Zone labels and informant names: "#scot" offers 13 SW · Scotland Yard.
     return searchPlaces(mention.query, caseMaps, 6).map((m) => ({
-      label: [m.zone.label, m.informant, caseMaps.length > 1 ? m.mapName : null].filter(Boolean).join(" · "),
-      insert: `#${m.zone.label}`,
+      label: [zoneName(m.zone), m.informant, caseMaps.length > 1 ? m.mapName : null].filter(Boolean).join(" · "),
+      insert: `#${zoneName(m.zone)}`,
       link: { place: { mapId: m.mapId, zoneId: m.zone.id } },
     }));
   });
@@ -150,7 +150,7 @@
     <ul class="options">
       {#each options as opt, i (opt.label)}
         <li>
-          <button type="button" class:hi={i === hi} class:create={"create" in opt} onmousedown={(e) => e.preventDefault()} onclick={() => pick(opt)}>
+          <button type="button" class:hi={i === hi} class:create={"create" in opt} onmouseenter={() => (hi = i)} onmousedown={(e) => e.preventDefault()} onclick={() => pick(opt)}>
             {opt.label}
           </button>
         </li>

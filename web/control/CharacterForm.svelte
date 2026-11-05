@@ -15,7 +15,7 @@
   import { svgToPng } from "../lib/cameo";
   import { imageFromTransfer, loadImage, uploadPortrait } from "../lib/portraitImage";
   import type { Connection } from "../lib/socket";
-  import { searchZones } from "../lib/trail";
+  import { searchZones, zoneName } from "../lib/trail";
   import PortraitCropper from "./PortraitCropper.svelte";
 
   interface Props {
@@ -57,7 +57,7 @@
     if (!p) return "";
     const map = app?.maps[p.mapId];
     const zone = map?.zones.find((z) => z.id === p.zoneId);
-    return zone ? `${zone.label}${caseMaps.length > 1 ? ` (${map!.name || map!.id})` : ""}` : "?";
+    return zone ? `${zoneName(zone)}${caseMaps.length > 1 ? ` (${map!.name || map!.id})` : ""}` : "?";
   };
 
   // --- Address picker ---------------------------------------------------------
@@ -210,7 +210,7 @@
           <div class="chips">
             {#each addrResults as m (m.mapId + m.zone.id)}
               <button type="button" onclick={() => ((address = { mapId: m.mapId, zoneId: m.zone.id }), (addrQuery = ""))}>
-                {m.zone.label}
+                {zoneName(m.zone)}
               </button>
             {:else}
               <small>No zone matches</small>

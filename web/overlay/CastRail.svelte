@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { zoneName } from "../lib/trail";
   import { flip } from "svelte/animate";
   import { fly } from "svelte/transition";
   import type { Character, MapDef } from "../../shared/schema";
@@ -32,7 +33,8 @@
 
   const address = (c: Character) => {
     const a = c.address;
-    return a ? (maps[a.mapId]?.zones.find((z) => z.id === a.zoneId)?.label ?? "") : "";
+    const zone = a && maps[a.mapId]?.zones.find((z) => z.id === a.zoneId);
+    return zone ? zoneName(zone) : "";
   };
 </script>
 
