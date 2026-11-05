@@ -13,6 +13,9 @@ if ! node -e "process.exit(Number(process.versions.node.split('.')[0]) < 22 ? 1 
   exit 1
 fi
 
+# The game's PDFs go here (see SETUP.md).
+mkdir -p artifacts
+
 if [ ! -d node_modules ]; then
   echo "Installing, first run only. This takes a minute or two..."
   npm install --no-audit --no-fund

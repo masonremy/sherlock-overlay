@@ -4,16 +4,18 @@
 #
 # Left out: installed packages (the start script reinstalls them), builds,
 # backups, trash and your saved cases. Add -IncludeCases to send cases too.
+# -Mini also leaves out the PDFs (most of the size); SETUP.md tells the
+# receiver where to put their own copies.
 #
-#   powershell -ExecutionPolicy Bypass -File make-zip.ps1 [-IncludeCases] [-Out C:\path\file.zip]
+#   powershell -ExecutionPolicy Bypass -File make-zip.ps1 [-Mini] [-IncludeCases] [-Out C:\path\file.zip]
 
-param([switch]$IncludeCases, [string]$Out)
+param([switch]$Mini, [switch]$IncludeCases, [string]$Out)
 $ErrorActionPreference = "Stop"
 
 $root = $PSScriptRoot
 $name = Split-Path $root -Leaf
 $parent = Split-Path $root -Parent
-if (-not $Out) { $Out = Join-Path $parent "$name.zip" }
+if (-not $Out) { $Out = Join-Path $parent $(if ($Mini) { "$name-mini.zip" } else { "$name.zip" }) }
 $Out = [IO.Path]::GetFullPath($Out)
 
 Push-Location $root
@@ -23,7 +25,8 @@ try {
   if ($LASTEXITCODE -ne 0) { throw "git is needed to list the app's files" }
 
   # Your data, without dot-folders (index caches, trash, set-aside files) or rolling backups.
-  $data = @("artifacts", "icons", "maps", "fonts", "portraits", "papers")
+  $data = @("icons", "maps", "fonts", "portraits", "papers")
+  if (-not $Mini) { $data += "artifacts" }
   if ($IncludeCases) { $data += "cases" }
   foreach ($dir in $data) {
     if (-not (Test-Path $dir)) { continue }

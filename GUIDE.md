@@ -23,7 +23,7 @@ Add `?bg=checker` to the overlay's address in a normal browser to see where it's
 
 ### Your game files
 
-The box's PDFs (newspapers, directory, informants, map) live in the `artifacts/` folder. They're found automatically when the program starts. If you add or replace PDFs, restart the start script.
+The box's PDFs (newspapers, directory, informants) live in the `artifacts/` folder. They're found automatically when the program starts. If you add or replace PDFs, restart the start script. If your copy came without them, `SETUP.md` explains where to put them.
 
 ### Setting up a case
 
