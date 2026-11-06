@@ -3,7 +3,9 @@
 # fonts, portraits, newspaper dates, layouts, theme).
 #
 # Left out: installed packages (the start script reinstalls them), builds,
-# backups, trash and your saved cases. Add -IncludeCases to send cases too.
+# backups, trash, your saved cases, and everything only used for developing
+# it (tests, design notes, these packing scripts). Add -IncludeCases to send
+# cases too.
 # -Mini also leaves out the PDFs (most of the size); SETUP.md tells the
 # receiver where to put their own copies.
 #
@@ -20,8 +22,18 @@ $Out = [IO.Path]::GetFullPath($Out)
 
 Push-Location $root
 try {
-  # The app: every file git tracks or would track (not ignored), if still there.
-  $files = @(git ls-files --cached --others --exclude-standard) | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf }
+  # The app: every file git tracks or would track (not ignored), if still there,
+  # minus what's only for development. Tests and packing scripts also trip
+  # antivirus heuristics in downloaded zips (temp files, downloads, -Bypass).
+  $devOnly = @(
+    "(^|/)tests/", "\.test\.ts$", "^playwright\.config\.ts$", "^vitest\.config\.ts$",
+    "^make-zip\.ps1$", "^make-zip\.bat$", "^make-mini-zip\.bat$",
+    "^CLAUDE\.md$", "^DESIGN\.md$", "^OPEN_ISSUES\.md$", "^\.git"
+  )
+  $files = @(git ls-files --cached --others --exclude-standard) | Where-Object {
+    $f = $_
+    (Test-Path -LiteralPath $f -PathType Leaf) -and -not ($devOnly | Where-Object { $f -match $_ })
+  }
   if ($LASTEXITCODE -ne 0) { throw "git is needed to list the app's files" }
 
   # Your data, without dot-folders (index caches, trash, set-aside files) or rolling backups.
