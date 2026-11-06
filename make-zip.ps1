@@ -3,9 +3,10 @@
 # fonts, portraits, newspaper dates, layouts, theme).
 #
 # Left out: installed packages (the start script reinstalls them), builds,
-# backups, trash, your saved cases, and everything only used for developing
-# it (tests, design notes, these packing scripts). Add -IncludeCases to send
-# cases too.
+# backups, trash, your saved cases, PDFs the app doesn't read (the rules
+# book; the board, whose map image is already in maps/), and everything only
+# used for developing it (tests, design notes, these packing scripts). Add
+# -IncludeCases to send cases too.
 # -Mini also leaves out the PDFs (most of the size); SETUP.md tells the
 # receiver where to put their own copies.
 #
@@ -45,6 +46,8 @@ try {
     Get-ChildItem $dir -Recurse -File | ForEach-Object {
       $rel = $_.FullName.Substring($root.Length + 1).Replace("\", "/")
       if ($rel -match "(^|/)\." -or $rel -match "(^|/)state\.\d+\.json$" -or $rel -match "\.broken[-.]") { return }
+      # Only the PDFs the app reads, recognised by name as the server does (server/docText.ts).
+      if ($rel -like "artifacts/*" -and $rel -notmatch "newspaper|journal|directory|annuaire|informant|informateur") { return }
       $files += $rel
     }
   }
