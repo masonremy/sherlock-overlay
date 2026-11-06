@@ -173,14 +173,23 @@ const ZoneId = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/, "Zone id: le
 const unit = z.number().min(0).max(1);
 export const NormPoint = z.tuple([unit, unit]);
 
-export const ZoneFields = z.object({
-  id: ZoneId,
+// Written out twice (with and without defaults) because a partial schema built
+// from defaulted fields fills the defaults in on every patch: moving a zone
+// would clear its district and make it visitable again.
+const zoneFields = {
   label: z.string().trim().min(1, "Label is required").max(60),
-  district: z.string().max(30).default(""),
+  district: z.string().max(30),
   shape: z.enum(["rect", "polygon"]),
   points: z.array(NormPoint).min(3, "A zone needs at least 3 points").max(500),
   anchor: NormPoint,
-  visitable: z.boolean().default(true),
+  visitable: z.boolean(),
+};
+
+export const ZoneFields = z.object({
+  id: ZoneId,
+  ...zoneFields,
+  district: zoneFields.district.default(""),
+  visitable: zoneFields.visitable.default(true),
 });
 
 export const Zone = ZoneFields.superRefine((zone, ctx) => {
@@ -189,7 +198,7 @@ export const Zone = ZoneFields.superRefine((zone, ctx) => {
   }
 });
 
-export const ZonePatch = ZoneFields.omit({ id: true }).partial().strict();
+export const ZonePatch = z.object(zoneFields).partial().strict();
 
 export const ImageSize = z.tuple([z.number().int().positive(), z.number().int().positive()]);
 

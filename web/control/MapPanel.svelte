@@ -35,9 +35,15 @@
   });
 
   let playMap = $state<ReturnType<typeof PlayMap>>();
+  // Each request pans once. The effect also re-runs on every new snapshot (the
+  // map object changes), which must not pull the view back to an old request.
+  let handledFocus = 0;
   $effect(() => {
     const req = play.focusRequest;
-    if (req && map?.id === req.mapId) tick().then(() => playMap?.focusZone(req.zoneId));
+    if (req && req.seq !== handledFocus && map?.id === req.mapId) {
+      handledFocus = req.seq;
+      tick().then(() => playMap?.focusZone(req.zoneId));
+    }
   });
 
   // --- Mirror mode: stream the panel's view (throttled) ---------------------
