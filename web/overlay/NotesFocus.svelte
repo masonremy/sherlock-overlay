@@ -4,7 +4,7 @@
   import EvidenceCard from "../lib/EvidenceCard.svelte";
   import TagMark from "../lib/icons/TagMark.svelte";
   import NoteText from "../lib/NoteText.svelte";
-  import { TAG_LABELS } from "../lib/notes";
+  import { TAG_PLURALS } from "../lib/notes";
   import { stepPlace } from "../lib/trail";
 
   // Expanded notes in the focus area: larger type, grouped by tag or by step.
@@ -29,7 +29,7 @@
     if (group === "tag" || group === "cards") {
       const order: (Note["tag"])[] = ["clue", "question", "theory", null];
       return order
-        .map((tag) => ({ key: tag ?? "none", tag, title: tag ? `${TAG_LABELS[tag]}s` : "Notes", items: notes.filter((n) => n.tag === tag) }))
+        .map((tag) => ({ key: tag ?? "none", tag, title: tag ? TAG_PLURALS[tag] : "Notes", items: notes.filter((n) => n.tag === tag) }))
         .filter((g) => g.items.length);
     }
     const byStep = trail

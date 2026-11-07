@@ -4,6 +4,14 @@ A local web app for streaming *Sherlock Holmes Consulting Detective*: a transpar
 
 **No game content is included.** The newspapers, directory, informants and map come from your own copy of the game: you put its PDFs in `data/` (see [SETUP.md](SETUP.md)). Nothing game-specific is bundled, downloaded or fetched.
 
+![The overlay: case title, cast with cameo portraits, letter keys, the map with numbered steps, and pinned notes](docs/screenshots/overlay.jpg)
+
+*The overlay, shown here on a plain backdrop (it's transparent in OBS). Screenshots use an invented demo case and town, not the game's.*
+
+| Control panel | Notes expanded on stream |
+| --- | --- |
+| ![The control panel: zone search, the map, and the trail tab](docs/screenshots/control-panel.png) | ![The overlay with notes expanded into the focus area, grouped into clues, questions and theories](docs/screenshots/notes.jpg) |
+
 ## Features
 
 - **Map trail:** click a zone (or search "14 WC") to record each move; numbered pins and a path animate on stream. Zones are drawn once in the built-in zone editor and shared by every case.
@@ -38,6 +46,7 @@ npm run dev        # server with live reload on http://localhost:7777
 npm test           # unit tests (Vitest)
 npm run check      # type-check (TypeScript and svelte-check)
 npm run test:e2e   # end-to-end smoke test (Playwright, Microsoft Edge)
+npm run screenshots  # regenerate the README's screenshots (docs/screenshots/)
 ```
 
 TypeScript throughout: Svelte 5 pages, a Fastify server, and one shared reducer (in `shared/`) used by the server and both pages. Every change is an action, so it syncs, saves and can be undone. [DESIGN.md](DESIGN.md) is the full design.

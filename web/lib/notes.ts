@@ -10,6 +10,13 @@ export const TAG_LABELS: Record<NonNullable<Note["tag"]>, string> = {
   theory: "Theory",
 };
 
+/** Headings for groups of notes by tag. */
+export const TAG_PLURALS: Record<NonNullable<Note["tag"]>, string> = {
+  clue: "Clues",
+  question: "Questions",
+  theory: "Theories",
+};
+
 /** Quick entry: a leading "!" pins the note, "?" tags it as a question (either order). */
 export function parseQuickNote(input: string): { text: string; pinned: boolean; tag: Note["tag"] } {
   const m = /^([!?]{1,2})\s*/.exec(input);

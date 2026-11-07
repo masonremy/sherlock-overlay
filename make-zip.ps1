@@ -27,7 +27,7 @@ try {
   # minus what's only for development. Tests and packing scripts also trip
   # antivirus heuristics in downloaded zips (temp files, downloads, -Bypass).
   $devOnly = @(
-    "(^|/)tests/", "\.test\.ts$", "^playwright\.config\.ts$", "^vitest\.config\.ts$",
+    "(^|/)tests/", "^docs/", "\.test\.ts$", "^playwright\.config\.ts$", "^vitest\.config\.ts$",
     "^make-zip\.ps1$", "^make-zip\.bat$", "^make-mini-zip\.bat$",
     "^CLAUDE\.md$", "^DESIGN\.md$", "^OPEN_ISSUES\.md$", "^\.git"
   )
