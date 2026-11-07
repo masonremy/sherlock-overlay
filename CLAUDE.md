@@ -14,7 +14,7 @@ A local web app for streaming Sherlock Holmes Consulting Detective: a read-only 
 - Every state change is an action, so it syncs, persists and can be undone. Anything set live must be editable live.
 - The overlay page background is always transparent.
 - Never bundle or fetch game content (case text, map or newspaper images). Everything game-specific comes from the streamer's uploads.
-- `maps/`, `cases/`, `fonts/` user uploads and `layouts.json` / `theme.json` are user data: git-ignored, never overwritten by code changes.
+- Everything under `data/` (the game's PDFs, maps, cases, portraits, papers, icons, fonts, `layouts.json`, `theme.json`) is user data: git-ignored, never overwritten by code changes. `data/README.md` is the only tracked file there. Code never assumes data at the repo root; the server reads `DATA_DIR` (default `data/`).
 
 ## Running
 

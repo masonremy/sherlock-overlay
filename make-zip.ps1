@@ -1,6 +1,6 @@
 # Packs the overlay into one zip to send to someone: the app itself, plus the
-# game files and set-up you've made (artifacts/ PDFs, icons, maps and zones,
-# fonts, portraits, newspaper dates, layouts, theme).
+# game files and set-up you've made from data/ (the PDFs, icons, maps and
+# zones, fonts, portraits, newspaper dates, layouts, theme).
 #
 # Left out: installed packages (the start script reinstalls them), builds,
 # backups, trash, your saved cases, PDFs the app doesn't read (the rules
@@ -38,20 +38,20 @@ try {
   if ($LASTEXITCODE -ne 0) { throw "git is needed to list the app's files" }
 
   # Your data, without dot-folders (index caches, trash, set-aside files) or rolling backups.
-  $data = @("icons", "maps", "fonts", "portraits", "papers")
-  if (-not $Mini) { $data += "artifacts" }
-  if ($IncludeCases) { $data += "cases" }
+  $data = @("data/icons", "data/maps", "data/fonts", "data/portraits", "data/papers")
+  if (-not $Mini) { $data += "data/artifacts" }
+  if ($IncludeCases) { $data += "data/cases" }
   foreach ($dir in $data) {
     if (-not (Test-Path $dir)) { continue }
     Get-ChildItem $dir -Recurse -File | ForEach-Object {
       $rel = $_.FullName.Substring($root.Length + 1).Replace("\", "/")
       if ($rel -match "(^|/)\." -or $rel -match "(^|/)state\.\d+\.json$" -or $rel -match "\.broken[-.]") { return }
       # Only the PDFs the app reads, recognised by name as the server does (server/docText.ts).
-      if ($rel -like "artifacts/*" -and $rel -notmatch "newspaper|journal|directory|annuaire|informant|informateur") { return }
+      if ($rel -like "data/artifacts/*" -and $rel -notmatch "newspaper|journal|directory|annuaire|informant|informateur") { return }
       $files += $rel
     }
   }
-  foreach ($f in @("layouts.json", "theme.json")) { if (Test-Path $f) { $files += $f } }
+  foreach ($f in @("data/layouts.json", "data/theme.json")) { if (Test-Path $f) { $files += $f } }
   $files = $files | Sort-Object -Unique
 } finally {
   Pop-Location

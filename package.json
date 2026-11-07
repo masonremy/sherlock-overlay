@@ -2,9 +2,10 @@
   "name": "sherlock-overlay",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch --clear-screen=false --ignore ./web --ignore ./cases --ignore ./maps server/index.ts",
+    "dev": "tsx watch --clear-screen=false --ignore ./web --ignore ./data server/index.ts",
     "build": "vite build",
     "start": "cross-env NODE_ENV=production tsx server/index.ts",
     "test": "vitest run",

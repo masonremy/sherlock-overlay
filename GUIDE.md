@@ -23,7 +23,7 @@ Add `?bg=checker` to the overlay's address in a normal browser to see where it's
 
 ### Your game files
 
-The box's PDFs (newspapers, directory, informants) live in the `artifacts/` folder. They're found automatically when the program starts. If you add or replace PDFs, restart the start script. If your copy came without them, `SETUP.md` explains where to put them.
+The box's PDFs (newspapers, directory, informants) live in the `data/artifacts/` folder. They're found automatically when the program starts. If you add or replace PDFs, restart the start script. If your copy came without them, `SETUP.md` explains where to put them.
 
 ### Setting up a case
 
@@ -132,7 +132,7 @@ In search lists: `↑` `↓` to choose, `Enter` (or `Tab` for mentions) to pick,
 ## Good to know
 
 - **Undo** covers everything, and **History** (bottom of the panel) jumps back to any earlier point.
-- Your data is kept in the folder: `cases/` (your games), `maps/`, `portraits/`, `fonts/`, `icons/`, `layouts.json` and `theme.json`. Back up the folder to keep it.
-- **Custom toolkit icons:** put `map.png`, `newspaper.png`, `notes.png`, `directory.png` or `informants.png` in `icons/`.
+- Everything of yours is in the `data/` folder: `cases/` (your games), `maps/`, `portraits/`, `fonts/`, `icons/`, `layouts.json` and `theme.json` (`data/README.md` lists them). Back up `data/` to keep it; updating the app never touches it.
+- **Custom toolkit icons:** put `map.png`, `newspaper.png`, `notes.png`, `directory.png` or `informants.png` in `data/icons/`.
 - **Another port:** if 7777 is taken, set the `PORT` environment variable before running the start script (for example `set PORT=7800` on Windows), and use that port in the addresses.
 - **Overlay address options:** `?only=focus,toolkit` shows only those parts (for one OBS source per part), `?layout=<name>` fixes a saved layout, and `?motion=off` turns off animation.

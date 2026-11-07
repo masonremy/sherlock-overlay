@@ -18,7 +18,7 @@ if errorlevel 1 (
 )
 
 rem The game's PDFs go here (see SETUP.md).
-if not exist artifacts\ mkdir artifacts
+if not exist data\artifacts\ mkdir data\artifacts
 
 if not exist node_modules\ (
   echo Installing, first run only. This takes a minute or two...

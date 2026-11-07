@@ -137,7 +137,7 @@ The Header component becomes a full-width title bar across the top of the overla
 
 The overlay's largest component is a **focus area** that shows one thing at a time: the map, the newspaper, expanded notes, the directory or the informants. The **toolkit bar** holds an icon for each; selecting one brings its full version into the focus area.
 
-- **Icons:** Map (folded map), Newspaper (folded paper), Notes (notebook), Directory (thumb-indexed book) and Informants (calling card); the last two appear when their PDFs are in `artifacts/`. The active one is lit; the others sit folded. A dot marks unseen newspaper pages or new notes. Icons shrink to fit the toolkit box, and labels drop out when there's no room.
+- **Icons:** Map (folded map), Newspaper (folded paper), Notes (notebook), Directory (thumb-indexed book) and Informants (calling card); the last two appear when their PDFs are in `data/artifacts/`. The active one is lit; the others sit folded. A dot marks unseen newspaper pages or new notes. Icons shrink to fit the toolkit box, and labels drop out when there's no room.
 - **Switching:** panel toolkit buttons or `Ctrl+1` to `Ctrl+5` (map, newspaper, notes, directory, informants). The outgoing item folds down into its icon and the incoming one unfolds out of its icon (\~500 ms).
 - **Default and return:** the map is the default. Dismissing the newspaper or contracting notes returns the focus area to whatever was there before, usually the map.
 - **Recording still works off-focus:** the streamer can record a move while the newspaper or notes are in focus; the map shows the new pin when it comes back.
@@ -240,7 +240,7 @@ Notes have two states, switched by an **Expand / Contract** button in the panel'
 
 ### Documents: newspapers, directory, informants
 
-The box's PDFs (from the streamer's own copy, never bundled) go in `artifacts/`, in any folder layout. At startup the server finds them, recognises each by name (`Journal`/`newspaper`, `Annuaire`/`directory`, `informateur`/`informant`) and indexes their text layer with pdf.js: lines with page positions, cached in `artifacts/.index/`. The pages themselves are drawn by pdf.js in the browser, so text stays sharp at any zoom.
+The box's PDFs (from the streamer's own copy, never bundled) go in `data/artifacts/`, in any folder layout. At startup the server finds them, recognises each by name (`Journal`/`newspaper`, `Annuaire`/`directory`, `informateur`/`informant`) and indexes their text layer with pdf.js: lines with page positions, cached in `data/artifacts/.index/`. The pages themselves are drawn by pdf.js in the browser, so text stays sharp at any zoom.
 
 - **Newspapers:** the paper library follows the newspaper PDFs: one entry per PDF, dated from its masthead. Dates and titles the streamer edits are kept; entries whose PDF is gone drop out. The case picks its own paper; the rules allow it plus earlier-dated papers (the shelf). Later papers are never shown or searched.
 - **Directory:** the alphabetical part and the list by trade. Big letters and trade headings become a "Jump to…" list (A–Z, then trades), each landing on its heading.
@@ -424,8 +424,12 @@ sherlock-overlay/
     overlay/     Overlay.svelte, MapPanel, CastRail, KeyGrid, NotesStrip
     control/     Control.svelte, MiniMap, TrailList, CastEditor, ZoneEditor
     lib/         socket.ts, mapMath.ts (normalised ↔ pixel, path curves)
-  maps/          london.json, london.jpg   (user-supplied, git-ignored)
-  cases/         <id>/state.json, assets/   (git-ignored)
+  data/          the streamer's files, git-ignored (data/README.md lists them):
+    artifacts/   the game's PDFs, plus .index/ (their text, for search)
+    maps/        london.json (zones), map images
+    cases/       <id>/state.json, rolling backups
+    portraits/ papers/ icons/ fonts/   libraries shared by every case
+    layouts.json, theme.json
 ```
 
 Svelte vs Preact is a taste call; Svelte's built-in `transition:` and `animate:` make the overlay motion nearly free.

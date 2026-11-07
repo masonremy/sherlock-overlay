@@ -1,15 +1,20 @@
 node_modules/
 dist/
-
-# User data: never committed, never overwritten by code changes
-maps/
-cases/
-fonts/
-layouts.json
-theme.json
-portraits/
-papers/
-/icons/
-/artifacts/
 test-results/
 playwright-report/
+
+# The streamer's data (the game's PDFs, maps, portraits, icons, fonts, cases,
+# layouts, theme): never committed, never overwritten by code changes.
+/data/*
+!/data/README.md
+
+# Where older copies kept the same data, before it moved into data/.
+/artifacts/
+/cases/
+/maps/
+/portraits/
+/papers/
+/fonts/
+/icons/
+/layouts.json
+/theme.json

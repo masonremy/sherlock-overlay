@@ -16,29 +16,29 @@ const directory: DocText = {
   id: "directory",
   pages: [
     { w: 454, h: 794, lines: [line("Intro text")] },
-    { w: 454, h: 794, lines: [line("Armitage’s Gallery ....21 NW"), line("Cox & Co Bank ....22 WC", 0.1, 0.3)] },
+    { w: 454, h: 794, lines: [line("Quarrington’s Gallery ....21 NW"), line("Rex & Co Bank ....22 WC", 0.1, 0.3)] },
   ],
 };
-const paper: DocText = { id: "paper-01", pages: [{ w: 794, h: 1247, lines: [line("Mr Cox was seen at the bank"), line("COX AND SONS")] }] };
+const paper: DocText = { id: "paper-01", pages: [{ w: 794, h: 1247, lines: [line("Mr Rex was seen at the bank"), line("REX AND SONS")] }] };
 
 describe("normalizeText", () => {
   it("ignores case, accents and curly apostrophes", () => {
-    expect(normalizeText("Armitage’s Café")).toBe("armitage's cafe");
+    expect(normalizeText("Quarrington’s Café")).toBe("quarrington's cafe");
   });
 });
 
 describe("searchDocs", () => {
   it("finds every match, in document then page order, with the line as a snippet", () => {
-    const results = searchDocs([directory, paper], "cox");
+    const results = searchDocs([directory, paper], "rex");
     expect(results.map((r) => [r.doc, r.page, r.snippet])).toEqual([
-      ["directory", 2, "Cox & Co Bank ....22 WC"],
-      ["paper-01", 1, "Mr Cox was seen at the bank"],
-      ["paper-01", 1, "COX AND SONS"],
+      ["directory", 2, "Rex & Co Bank ....22 WC"],
+      ["paper-01", 1, "Mr Rex was seen at the bank"],
+      ["paper-01", 1, "REX AND SONS"],
     ]);
   });
 
   it("matches straight and curly apostrophes alike", () => {
-    expect(searchDocs([directory], "armitage's")).toHaveLength(1);
+    expect(searchDocs([directory], "quarrington's")).toHaveLength(1);
   });
 
   it("needs at least two characters", () => {
@@ -48,7 +48,7 @@ describe("searchDocs", () => {
 
 describe("matchRects", () => {
   it("places the highlight over the matched characters, proportionally within the run", () => {
-    const l = line("Cox & Co Bank", 0.1, 0.3, 0.26, 0.01); // 13 chars → 0.02 per char
+    const l = line("Rex & Co Bank", 0.1, 0.3, 0.26, 0.01); // 13 chars → 0.02 per char
     const [r] = matchRects(l, 9, 13); // "Bank"
     expect(r.x).toBeCloseTo(0.1 + 9 * 0.02);
     expect(r.w).toBeCloseTo(4 * 0.02);
@@ -57,21 +57,21 @@ describe("matchRects", () => {
   });
 
   it("covers a match that spans two runs", () => {
-    const l = { text: "Sloane Building", x: 0.1, y: 0.3, w: 0.3, h: 0.01, runs: [{ start: 0, end: 6, x: 0.1, w: 0.12 }, { start: 7, end: 15, x: 0.24, w: 0.16 }] };
+    const l = { text: "Barlow Crescent", x: 0.1, y: 0.3, w: 0.3, h: 0.01, runs: [{ start: 0, end: 6, x: 0.1, w: 0.12 }, { start: 7, end: 15, x: 0.24, w: 0.16 }] };
     expect(matchRects(l, 3, 10)).toHaveLength(2);
   });
 });
 
 describe("pageHighlights", () => {
   it("boxes every match on the page, and the active one separately", () => {
-    const { all, active } = pageHighlights(paper, 1, "cox", { page: 1, line: 1, start: 0, end: 3 });
-    expect(all).toHaveLength(1); // "Mr Cox…"; the active match isn't drawn twice
+    const { all, active } = pageHighlights(paper, 1, "rex", { page: 1, line: 1, start: 0, end: 3 });
+    expect(all).toHaveLength(1); // "Mr Rex…"; the active match isn't drawn twice
     expect(active).toHaveLength(1);
     expect(active[0].y).toBeCloseTo(0.2);
   });
 
   it("draws nothing for another page or a short query", () => {
-    expect(pageHighlights(directory, 1, "cox", null)).toEqual({ all: [], active: [] });
+    expect(pageHighlights(directory, 1, "rex", null)).toEqual({ all: [], active: [] });
     expect(pageHighlights(directory, 2, "", null)).toEqual({ all: [], active: [] });
   });
 
@@ -81,17 +81,17 @@ describe("pageHighlights", () => {
 });
 
 describe("activeStillMatches", () => {
-  const active = { page: 2, line: 1, start: 0, end: 3 }; // "Cox" in "Cox & Co Bank …"
+  const active = { page: 2, line: 1, start: 0, end: 3 }; // "Rex" in "Rex & Co Bank …"
 
   it("keeps the chosen result while the search still finds it", () => {
-    expect(activeStillMatches(directory, active, "cox")).toBe(true);
-    expect(activeStillMatches(directory, active, " COX ")).toBe(true);
+    expect(activeStillMatches(directory, active, "rex")).toBe(true);
+    expect(activeStillMatches(directory, active, " REX ")).toBe(true);
   });
 
   it("drops it once the search is cleared or changed", () => {
     expect(activeStillMatches(directory, active, "")).toBe(false);
     expect(activeStillMatches(directory, active, "bank")).toBe(false);
-    expect(activeStillMatches(null, active, "cox")).toBe(false);
+    expect(activeStillMatches(null, active, "rex")).toBe(false);
   });
 });
 
@@ -117,10 +117,10 @@ describe("viewAround", () => {
 
 describe("addresses", () => {
   it("reads the address at the end of a directory line", () => {
-    expect(addressIn("Cox & Co Bank ................22 WC")).toEqual({ label: "22 WC", number: 22, district: "WC" });
-    expect(addressIn("Kanary, Gilda ........35 S")).toEqual({ label: "35 S", number: 35, district: "S" });
-    expect(addressIn("Roswell, Patience ..... 46 QP")).toEqual({ label: "46 QP", number: 46, district: "QP" });
-    expect(addressIn("Mr Cox was seen at the bank")).toBeNull();
+    expect(addressIn("Rex & Co Bank ................22 WC")).toEqual({ label: "22 WC", number: 22, district: "WC" });
+    expect(addressIn("Tolliver, Ada ........35 S")).toEqual({ label: "35 S", number: 35, district: "S" });
+    expect(addressIn("Wexford, Prudence ..... 46 QP")).toEqual({ label: "46 QP", number: 46, district: "QP" });
+    expect(addressIn("Mr Rex was seen at the bank")).toBeNull();
   });
 
   it("finds the zone with that label on the case's maps", () => {

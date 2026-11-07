@@ -21,7 +21,7 @@ address them one at a time; tick an item (and note the commit) when it's done.
 ## Decisions pending
 
 - [x] **10. Custom toolkit icons.** Done: drop `map`, `newspaper`, `notes`, `directory` or `informants` (.png/.jpg/.webp/.svg) into the git-ignored `icons/` folder and the toolkit uses it, else the built-in drawing. Still open: an upload button in the panel, and separate folded/open artwork (one image per item for now; the lit state is a glow).
-- [ ] **11. CLAUDE.md user-data list** doesn't mention `portraits/` and `papers/` (both git-ignored).
+- [x] **11. CLAUDE.md user-data list** doesn't mention `portraits/` and `papers/` (both git-ignored). Done: all user data now lives in `data/`, and CLAUDE.md names every part of it.
 - [ ] **12. DESIGN.md open questions:** which box first; camera-on-table vs digital setup; Twitch chat hooks later.
 
 Out of scope for v1 (per DESIGN.md): Twitch chat integration, viewer voting, cloud hosting.

@@ -17,16 +17,16 @@ describe("linesFromItems", () => {
 
   it("joins runs into lines at end-of-line marks, with normalised boxes (y from the top)", () => {
     const lines = linesFromItems(
-      [run("Bachmann, Rolph", 40, 700, 52), run(" ", 92, 700, 1), run("......83 SE", 94, 700, 40, 8, true), run("Bacmeister, Ernst", 40, 689, 50), run(".....5 EC", 92, 689, 30, 8, true)],
+      [run("Abbott, Ivo", 40, 700, 52), run(" ", 92, 700, 1), run("......83 SE", 94, 700, 40, 8, true), run("Barlow, Ada", 40, 689, 50), run(".....5 EC", 92, 689, 30, 8, true)],
       W,
       H,
     );
-    expect(lines.map((l) => l.text)).toEqual(["Bachmann, Rolph ......83 SE", "Bacmeister, Ernst .....5 EC"]);
+    expect(lines.map((l) => l.text)).toEqual(["Abbott, Ivo ......83 SE", "Barlow, Ada .....5 EC"]);
     const l = lines[0];
     expect(l.x).toBeCloseTo(40 / W);
     expect(l.w).toBeCloseTo((134 - 40) / W);
     expect(l.y).toBeCloseTo((H - 700 - 8 * 0.85) / H); // top of the glyphs
-    expect(l.runs.map((r) => l.text.slice(r.start, r.end))).toEqual(["Bachmann, Rolph", "......83 SE"]);
+    expect(l.runs.map((r) => l.text.slice(r.start, r.end))).toEqual(["Abbott, Ivo", "......83 SE"]);
   });
 
   it("starts a new line when the baseline moves, even without an end-of-line mark", () => {
@@ -35,13 +35,13 @@ describe("linesFromItems", () => {
   });
 
   it("puts a space between runs separated by a gap, but not between touching ones", () => {
-    const lines = linesFromItems([run("Sloane", 40, 500, 30), run("Building", 74, 500, 35), run("'s", 109, 500, 6, 8, true)], W, H);
-    expect(lines[0].text).toBe("Sloane Building's");
+    const lines = linesFromItems([run("Barlow", 40, 500, 30), run("Crescent", 74, 500, 35), run("'s", 109, 500, 6, 8, true)], W, H);
+    expect(lines[0].text).toBe("Barlow Crescent's");
   });
 
   it("keeps a drop cap apart from the entry that shares its baseline", () => {
-    const lines = linesFromItems([run("C", 36, 600, 30, 55), run("C. Smith & Sons", 36, 600, 50), run("......4 E", 90, 600, 30, 8, true)], W, H);
-    expect(lines.map((l) => l.text)).toEqual(["C", "C. Smith & Sons ......4 E"]);
+    const lines = linesFromItems([run("C", 36, 600, 30, 55), run("C. Cranmore & Sons", 36, 600, 50), run("......4 E", 90, 600, 30, 8, true)], W, H);
+    expect(lines.map((l) => l.text)).toEqual(["C", "C. Cranmore & Sons ......4 E"]);
     expect(lines[1].h).toBeCloseTo((8 * 1.1) / H);
   });
 
@@ -69,7 +69,7 @@ describe("classifyArtifact and docIdFor", () => {
 
 describe("parsePaperDate", () => {
   it("reads the masthead date", () => {
-    expect(parsePaperDate("N° 31 405 LONDON, THURSDAY, NOVEMBER 19, 1885 Price : 3d.")).toBe("1885-11-19");
+    expect(parsePaperDate("N° 12 345 LONDON, THURSDAY, NOVEMBER 19, 1885 Price : 3d.")).toBe("1885-11-19");
     expect(parsePaperDate("LONDON, MONDAY, MARCH 2, 1885")).toBe("1885-03-02");
     expect(parsePaperDate("no date here")).toBeNull();
   });
@@ -82,9 +82,9 @@ describe("directorySections", () => {
   it("finds letter and category headings by their size", () => {
     const pages = [
       page([line("The following directory is a listing", 0.012)]),
-      page([line("A", 0.063), line("A.B. Cahn & Co ....20 E", 0.01), line("A.B. Muirhead ....41 EC", 0.01)]),
-      page([line("B", 0.063), line("Bachmann, Rolph ....83 SE", 0.01), line("Bacmeister, Ernst ....5 EC", 0.01)]),
-      page([line("Auction Houses", 0.017), line("Armitage’s Gallery ....21 NW", 0.01), line("Dentists", 0.017), line("Jones, G.H. ....3 WC", 0.01)]),
+      page([line("A", 0.063), line("A.B. Pinchbeck & Co ....20 E", 0.01), line("A.B. Ollerton ....41 EC", 0.01)]),
+      page([line("B", 0.063), line("Abbott, Ivo ....83 SE", 0.01), line("Barlow, Ada ....5 EC", 0.01)]),
+      page([line("Auction Houses", 0.017), line("Quarrington’s Gallery ....21 NW", 0.01), line("Dentists", 0.017), line("Haskett, G.H. ....3 WC", 0.01)]),
     ];
     expect(directorySections(pages).map(({ y: _y, ...s }) => s)).toEqual([
       { label: "A", page: 2, kind: "letter" },

@@ -1,9 +1,10 @@
 import Fastify from "fastify";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { relative, resolve } from "node:path";
 import { WebSocketServer, WebSocket } from "ws";
 import { DEFAULT_PORT, WS_PATH } from "../shared/constants";
 import { ClientMessage, type MirrorView, type ReaderView, type ServerMessage } from "../shared/protocol";
+import { leftoverLegacyData, moveLegacyData } from "./dataDir";
 import { loadDocs } from "./docs";
 import { reconcilePapers } from "./docText";
 import { downloadGoogleFont, FontError, listFonts, saveUploadedFont } from "./fonts";
@@ -15,10 +16,17 @@ import { saveImage, UnsupportedImageError } from "./uploads";
 const root = resolve(import.meta.dirname, "..");
 const isProd = process.env.NODE_ENV === "production";
 const port = Number(process.env.PORT ?? DEFAULT_PORT);
-// User data (cases/, maps/, portraits/, papers/, fonts/, layouts.json,
-// theme.json) lives in the repo by default; DATA_DIR points it elsewhere, e.g.
-// so test runs never touch the streamer's files.
-const dataDir = resolve(process.env.DATA_DIR ?? root);
+// The streamer's data (the game's PDFs, maps, cases, portraits, papers, icons,
+// fonts, layouts.json, theme.json) lives in data/, apart from the code;
+// DATA_DIR points it elsewhere, e.g. so test runs never touch the real files.
+const dataDir = resolve(process.env.DATA_DIR ?? resolve(root, "data"));
+if (!process.env.DATA_DIR) {
+  // Older copies kept it all at the top level: move it in (rename only; never overwrites).
+  const moved = await moveLegacyData(root, dataDir);
+  if (moved.length) console.log(`Moved into data/: ${moved.join(", ")}`);
+  const left = await leftoverLegacyData(root);
+  if (left.length) console.warn(`Also at the top level, not moved because data/ has its own: ${left.join(", ")}. The app uses data/.`);
+}
 const casesDir = resolve(dataDir, "cases");
 const mapsDir = resolve(dataDir, "maps");
 const portraitsDir = resolve(dataDir, "portraits");
@@ -40,7 +48,9 @@ console.log(`case "${caseId}" loaded at rev ${store.state.rev}; ${Object.keys(st
 await mkdir(artifactsDir, { recursive: true });
 const library = await loadDocs(artifactsDir);
 store.adoptPapers(reconcilePapers(store.state.papers, library.docs.filter((d) => d.kind === "newspaper")));
-console.log(`${library.docs.length} document(s) in artifacts/: ${library.docs.map((d) => d.id).join(", ") || "none"}`);
+console.log(
+  `${library.docs.length} document(s) in ${relative(root, artifactsDir).replaceAll("\\", "/") || "."}/: ${library.docs.map((d) => d.id).join(", ") || "none"}`,
+);
 
 // --- WebSocket sync ---------------------------------------------------------
 
